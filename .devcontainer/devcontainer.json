@@ -1,20 +1,7 @@
 {
   "name": "eVyoog GL Development",
 
-  "image": "mcr.microsoft.com/devcontainers/java:21-bullseye",
-
-  "features": {
-    "ghcr.io/devcontainers/features/java:1": {
-      "version": "21",
-      "installMaven": "true",
-      "installGradle": "false"
-    },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "version": "latest",
-      "moby": true
-    },
-    "ghcr.io/devcontainers/features/sshd:1": {}
-  },
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
 
   "forwardPorts": [8080, 5432],
   "portsAttributes": {
@@ -64,6 +51,7 @@
         "editor.insertSpaces": true,
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
+        "java.jdt.ls.java.home": "/usr/lib/jvm/java-21-amazon-corretto",
         "sqltools.connections": [
           {
             "name": "eVyoog GL (dev)",
