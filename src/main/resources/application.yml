@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: evyoog-gl
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/evyoog_gl}
+    username: ${SPRING_DATASOURCE_USERNAME:evyoog_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:evyoog_dev_pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: gl
+        format_sql: true
+  flyway:
+    enabled: true
+    schemas: gl,aie
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.evyoog: INFO
+    org.flywaydb: INFO
