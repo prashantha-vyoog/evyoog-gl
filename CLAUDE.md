@@ -443,7 +443,7 @@ Always check which capability is being built in this session. Follow this sequen
   = not started
 
 ✓ GL-01 Enterprise Setup
-→ GL-02 Setup Wizard           ← EXAMPLE: update this line to reflect current position
+→ GL-02 Setup Wizard
   GL-03 Ledger Management
   GL-04 Finance Dimension Management
   GL-05 Chart of Accounts Management

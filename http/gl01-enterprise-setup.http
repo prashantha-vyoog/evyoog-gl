@@ -1,0 +1,224 @@
+### GL-01 Enterprise Setup — example requests
+### Run `mvn spring-boot:run` first, then execute requests top-to-bottom with the REST Client
+### VS Code extension — each response's id feeds the next request's variable.
+
+@baseUrl = http://localhost:8080
+@userId = prashanth
+
+### 1. Create a consumption context (WORKSPACE)
+# @name createContext
+POST {{baseUrl}}/api/v1/gl/consumption-contexts
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "segmentType": "WORKSPACE",
+  "code": "CTX-001",
+  "name": "Coimbatore Manufacturing Group"
+}
+
+### Get consumption context by id
+@contextId = {{createContext.response.body.data.id}}
+GET {{baseUrl}}/api/v1/gl/consumption-contexts/{{contextId}}
+
+### List all consumption contexts
+GET {{baseUrl}}/api/v1/gl/consumption-contexts
+
+### 2. Create a business group (THICK_ES — supports multiple Legal Entities)
+# @name createBusinessGroup
+POST {{baseUrl}}/api/v1/gl/business-groups
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "consumptionContextId": "{{contextId}}",
+  "code": "BG-001",
+  "name": "Coimbatore Manufacturing Group",
+  "esMode": "THICK_ES",
+  "defaultCurrency": "INR"
+}
+
+@businessGroupId = {{createBusinessGroup.response.body.data.id}}
+
+### Get business group by id
+GET {{baseUrl}}/api/v1/gl/business-groups/{{businessGroupId}}
+
+### List business groups filtered by consumption context
+GET {{baseUrl}}/api/v1/gl/business-groups?consumptionContextId={{contextId}}
+
+### 3. Create a legal entity
+# @name createLegalEntity
+POST {{baseUrl}}/api/v1/gl/legal-entities
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "businessGroupId": "{{businessGroupId}}",
+  "code": "LE-001",
+  "name": "Coimbatore Plant Legal Entity",
+  "accountingStandard": "IND_AS",
+  "tan": "CHEE12345F"
+}
+
+@legalEntityId = {{createLegalEntity.response.body.data.id}}
+
+### Get legal entity by id
+GET {{baseUrl}}/api/v1/gl/legal-entities/{{legalEntityId}}
+
+### List legal entities filtered by business group
+GET {{baseUrl}}/api/v1/gl/legal-entities?businessGroupId={{businessGroupId}}
+
+### Update legal entity (PATCH)
+PATCH {{baseUrl}}/api/v1/gl/legal-entities/{{legalEntityId}}
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "tan": "CHEE99999F"
+}
+
+### 4. Create a business unit (1 BU = 1 State = 1 GSTIN)
+# @name createBusinessUnit
+POST {{baseUrl}}/api/v1/gl/business-units
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "legalEntityId": "{{legalEntityId}}",
+  "code": "BU-001",
+  "name": "Coimbatore Plant",
+  "gstin": "33AABCE1234F1Z5"
+}
+
+@businessUnitId = {{createBusinessUnit.response.body.data.id}}
+
+### Get business unit by id
+GET {{baseUrl}}/api/v1/gl/business-units/{{businessUnitId}}
+
+### List business units filtered by legal entity
+GET {{baseUrl}}/api/v1/gl/business-units?legalEntityId={{legalEntityId}}
+
+### Update business unit (PATCH)
+PATCH {{baseUrl}}/api/v1/gl/business-units/{{businessUnitId}}
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "name": "Coimbatore Plant (Renamed)"
+}
+
+### 5. Create an inventory organisation (optional under Thin ES)
+# @name createInventoryOrg
+POST {{baseUrl}}/api/v1/gl/inventory-organisations
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "businessUnitId": "{{businessUnitId}}",
+  "code": "IO-001",
+  "name": "Main Warehouse"
+}
+
+@inventoryOrgId = {{createInventoryOrg.response.body.data.id}}
+
+### Get inventory organisation by id
+GET {{baseUrl}}/api/v1/gl/inventory-organisations/{{inventoryOrgId}}
+
+### List inventory organisations filtered by business unit
+GET {{baseUrl}}/api/v1/gl/inventory-organisations?businessUnitId={{businessUnitId}}
+
+### 6. Create a sub-inventory
+# @name createSubInventory
+POST {{baseUrl}}/api/v1/gl/sub-inventories
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "inventoryOrganisationId": "{{inventoryOrgId}}",
+  "code": "SI-001",
+  "name": "Raw Materials Bin"
+}
+
+@subInventoryId = {{createSubInventory.response.body.data.id}}
+
+### Get sub-inventory by id
+GET {{baseUrl}}/api/v1/gl/sub-inventories/{{subInventoryId}}
+
+### List sub-inventories filtered by inventory organisation
+GET {{baseUrl}}/api/v1/gl/sub-inventories?inventoryOrganisationId={{inventoryOrgId}}
+
+### 7. Audit log — every write above produced a CREATE entry
+GET {{baseUrl}}/api/v1/gl/audit-log?entityName=legal_entity&entityId={{legalEntityId}}
+
+### All audit log entries, most recent page
+GET {{baseUrl}}/api/v1/gl/audit-log
+
+
+### ── Rejection cases ─────────────────────────────────────────────
+
+### Thin ES: create a second Business Group with THIN_ES mode
+# @name createThinBusinessGroup
+POST {{baseUrl}}/api/v1/gl/business-groups
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "consumptionContextId": "{{contextId}}",
+  "code": "BG-002",
+  "name": "Chennai Trading Group",
+  "esMode": "THIN_ES",
+  "defaultCurrency": "INR"
+}
+
+@thinBusinessGroupId = {{createThinBusinessGroup.response.body.data.id}}
+
+### First Legal Entity under Thin ES — succeeds (201)
+# @name createFirstThinLe
+POST {{baseUrl}}/api/v1/gl/legal-entities
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "businessGroupId": "{{thinBusinessGroupId}}",
+  "code": "LE-THIN-001",
+  "name": "Chennai Trading Legal Entity"
+}
+
+### Second Legal Entity under the same Thin ES group — rejected with 409 THIN_ES_LE_LIMIT
+POST {{baseUrl}}/api/v1/gl/legal-entities
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "businessGroupId": "{{thinBusinessGroupId}}",
+  "code": "LE-THIN-002",
+  "name": "Second Legal Entity — should be rejected"
+}
+
+### Invalid GSTIN format — rejected with 400 INVALID_GSTIN
+POST {{baseUrl}}/api/v1/gl/business-units
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "legalEntityId": "{{legalEntityId}}",
+  "code": "BU-BAD-GSTIN",
+  "name": "Invalid GSTIN Unit",
+  "gstin": "NOT-A-VALID-GSTIN"
+}
+
+### Duplicate business group code within the same context — rejected with 409 DUPLICATE_CODE
+POST {{baseUrl}}/api/v1/gl/business-groups
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "consumptionContextId": "{{contextId}}",
+  "code": "BG-001",
+  "name": "Duplicate Code Group",
+  "esMode": "THICK_ES",
+  "defaultCurrency": "INR"
+}
+
+### Unknown legal entity id — rejected with 404 RESOURCE_NOT_FOUND
+GET {{baseUrl}}/api/v1/gl/legal-entities/00000000-0000-0000-0000-000000000000
