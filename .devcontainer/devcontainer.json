@@ -12,12 +12,9 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
       "moby": true
-    }
+    },
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
-
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
   "forwardPorts": [8080, 5432],
   "portsAttributes": {
@@ -34,11 +31,10 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "remoteEnv": {
-    "SPRING_DATASOURCE_URL": "jdbc:postgresql://postgres:5432/evyoog_gl",
+    "SPRING_DATASOURCE_URL": "jdbc:postgresql://localhost:5432/evyoog_gl",
     "SPRING_DATASOURCE_USERNAME": "evyoog_app",
     "SPRING_DATASOURCE_PASSWORD": "evyoog_dev_pass",
-    "SPRING_PROFILES_ACTIVE": "dev",
-    "TESTCONTAINERS_HOST_OVERRIDE": "localhost"
+    "SPRING_PROFILES_ACTIVE": "dev"
   },
 
   "customizations": {
@@ -57,8 +53,7 @@
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
         "streetsidesoftware.code-spell-checker",
-        "ms-azuretools.vscode-docker",
-        "github.copilot"
+        "ms-azuretools.vscode-docker"
       ],
       "settings": {
         "java.compile.nullAnalysis.mode": "automatic",
@@ -69,12 +64,11 @@
         "editor.insertSpaces": true,
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
-        "spring-boot.ls.java.home": "/usr/local/sdkman/candidates/java/current",
         "sqltools.connections": [
           {
             "name": "eVyoog GL (dev)",
             "driver": "PostgreSQL",
-            "server": "postgres",
+            "server": "localhost",
             "port": 5432,
             "database": "evyoog_gl",
             "username": "evyoog_app",
