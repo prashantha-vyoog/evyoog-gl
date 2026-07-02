@@ -12,6 +12,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.Map;
 
 @Entity
 @Table(name = "consumption_context", schema = "gl")
@@ -35,4 +39,8 @@ public class ConsumptionContext extends AuditableEntity {
 
     @Column(name = "status", nullable = false, length = 20)
     private String status;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "provisioning_answers", columnDefinition = "jsonb")
+    private Map<String, Object> provisioningAnswers;
 }
