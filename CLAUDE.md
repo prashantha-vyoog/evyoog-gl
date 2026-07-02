@@ -443,10 +443,10 @@ Always check which capability is being built in this session. Follow this sequen
   = not started
 
 ✓ GL-01 Enterprise Setup
-→ GL-02 Setup Wizard
-  GL-03 Ledger Management
-  GL-04 Finance Dimension Management
-  GL-05 Chart of Accounts Management
+✓ GL-02 Setup Wizard
+✓ GL-03 Ledger Management
+✓ GL-04 Finance Dimension Management
+→ GL-05 Chart of Accounts Management
   GL-08 Accounting Calendar
   GL-09 Period Management
   GL-10 Period Status Control
