@@ -48,7 +48,7 @@ Rule 4 — UUID keys: all primary keys are UUID via uuid_generate_v4()
 | DTO mapping | MapStruct 1.5.5 |
 | Boilerplate | Lombok |
 | API docs | Springdoc OpenAPI 3 (Swagger UI at /swagger-ui.html) |
-| JSONB mapping | hibernate-types-60 (vladmihalcea) |
+| JSONB mapping | Hibernate 7 native (Spring Boot 4) — no external library needed |
 | Unit tests | JUnit 5 + Mockito |
 | Integration tests | Testcontainers (PostgreSQL container) |
 | Build | Maven |
@@ -87,7 +87,7 @@ spring:
 `gl.journal_line.account_combination` and `gl.account_balance.account_combination` are `jsonb`. Map with:
 
 ```java
-@Type(JsonBinaryType.class)
+// Hibernate 7 handles JSONB natively — no @Type annotation needed
 @Column(name = "account_combination", columnDefinition = "jsonb")
 private Map<String, String> accountCombination;
 ```
