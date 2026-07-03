@@ -6,7 +6,8 @@
       "Bash(nohup mvn spring-boot:run)",
       "Bash(echo \"PID:$!\")",
       "Bash(curl -s http://localhost:8080/api-docs)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(pkill -f \"spring-boot:run\")"
     ]
   }
 }
