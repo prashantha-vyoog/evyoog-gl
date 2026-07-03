@@ -15,18 +15,15 @@ import com.evyoog.gl.enterprise.domain.ConsumptionContext;
 import com.evyoog.gl.ledger.domain.Ledger;
 import com.evyoog.gl.ledger.repository.LedgerRepository;
 import com.evyoog.gl.ledger.repository.LegalEntityLedgerRepository;
+import com.evyoog.gl.period.domain.AccountingPeriod;
+import com.evyoog.gl.period.service.AccountingPeriodService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.Month;
-import java.time.YearMonth;
-import java.time.format.TextStyle;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -39,6 +36,7 @@ public class AccountingCalendarService {
     private final AccountingCalendarRepository repository;
     private final LedgerRepository ledgerRepository;
     private final LegalEntityLedgerRepository legalEntityLedgerRepository;
+    private final AccountingPeriodService accountingPeriodService;
     private final AccountingCalendarMapper mapper;
     private final AuditService auditService;
 
@@ -59,13 +57,9 @@ public class AccountingCalendarService {
                 ? request.fiscalYearStartMonth() : intAnswer(provisioningAnswers, "fiscalStartMonth", 4);
         int fiscalYearStartDay = request.fiscalYearStartDay() != null ? request.fiscalYearStartDay() : 1;
         PeriodType periodType = request.periodType() != null ? request.periodType() : PeriodType.MONTHLY;
-        int periodsPerYear = periodsPerYear(periodType);
+        int periodsPerYear = accountingPeriodService.periodsPerYear(periodType);
         int initialFiscalYear = request.initialFiscalYear() != null
                 ? request.initialFiscalYear() : intAnswer(provisioningAnswers, "fiscalStartYear", LocalDate.now().getYear());
-
-        // Fail fast before persisting anything if the date math for this fiscal year is invalid.
-        List<GeneratedPeriod> periods = generatePeriods(fiscalYearStartMonth, fiscalYearStartDay, periodType, initialFiscalYear);
-        String fiscalYearName = deriveFiscalYearName(fiscalYearStartMonth, initialFiscalYear);
 
         AccountingCalendar entity = mapper.toEntity(request);
         entity.setLedger(ledger);
@@ -77,6 +71,13 @@ public class AccountingCalendarService {
         entity.setUpdatedBy(performedBy);
 
         AccountingCalendar saved = repository.saveAndFlush(entity);
+
+        // Delegates to AccountingPeriodService (GL-09), which persists the real
+        // gl.accounting_period rows within this same transaction.
+        List<AccountingPeriod> periods = accountingPeriodService.generatePeriodsForFiscalYear(
+                saved.getId(), initialFiscalYear, performedBy);
+        String fiscalYearName = accountingPeriodService.deriveFiscalYearName(fiscalYearStartMonth, initialFiscalYear);
+
         AccountingCalendarResponse response = mapper.toResponse(saved).withGeneratedInfo(periods.size(), fiscalYearName);
 
         auditService.log(AuditAction.CREATE, "accounting_calendar", saved.getId(), null, response, performedBy);
@@ -123,8 +124,9 @@ public class AccountingCalendarService {
 
     private AccountingCalendarResponse enrichCurrent(AccountingCalendar entity) {
         int currentFiscalYear = fiscalYearStartYearFor(LocalDate.now(), entity.getFiscalYearStartMonth(), entity.getFiscalYearStartDay());
-        String fiscalYearName = deriveFiscalYearName(entity.getFiscalYearStartMonth(), currentFiscalYear);
-        return mapper.toResponse(entity).withGeneratedInfo(entity.getPeriodsPerYear(), fiscalYearName);
+        String fiscalYearName = accountingPeriodService.deriveFiscalYearName(entity.getFiscalYearStartMonth(), currentFiscalYear);
+        long periodCount = accountingPeriodService.countPeriods(entity.getId());
+        return mapper.toResponse(entity).withGeneratedInfo((int) periodCount, fiscalYearName);
     }
 
     private Map<String, Object> resolveProvisioningAnswers(UUID ledgerId) {
@@ -142,113 +144,13 @@ public class AccountingCalendarService {
         return value instanceof Number number ? number.intValue() : defaultValue;
     }
 
-    private int periodsPerYear(PeriodType periodType) {
-        return switch (periodType) {
-            case MONTHLY -> 12;
-            case QUARTERLY -> 4;
-            case FISCAL_4_4_5 -> 13;
-        };
-    }
-
     private int fiscalYearStartYearFor(LocalDate date, int fiscalStartMonth, int fiscalStartDay) {
         LocalDate fiscalStartThisCalendarYear = LocalDate.of(date.getYear(), fiscalStartMonth, fiscalStartDay);
         return date.isBefore(fiscalStartThisCalendarYear) ? date.getYear() - 1 : date.getYear();
     }
 
-    String deriveFiscalYearName(int fiscalYearStartMonth, int fiscalYearStartYear) {
-        if (fiscalYearStartMonth == 1) {
-            return String.valueOf(fiscalYearStartYear);
-        }
-        return fiscalYearStartYear + "-" + String.valueOf(fiscalYearStartYear + 1).substring(2);
-    }
-
-    String derivePeriodName(int month, int year) {
-        return Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH).toUpperCase(Locale.ENGLISH) + "-" + year;
-    }
-
-    int deriveQuarter(int month, int fiscalYearStartMonth) {
-        int fiscalMonth = ((month - fiscalYearStartMonth + 12) % 12) + 1;
-        return (fiscalMonth - 1) / 3 + 1;
-    }
-
-    List<GeneratedPeriod> generatePeriods(int fiscalYearStartMonth, int fiscalYearStartDay, PeriodType periodType, int fiscalYear) {
-        return switch (periodType) {
-            case MONTHLY -> generateMonthlyPeriods(fiscalYearStartMonth, fiscalYear);
-            case QUARTERLY -> generateQuarterlyPeriods(fiscalYearStartMonth, fiscalYear);
-            case FISCAL_4_4_5 -> generateFiscal445Periods(fiscalYearStartMonth, fiscalYearStartDay, fiscalYear);
-        };
-    }
-
-    private List<GeneratedPeriod> generateMonthlyPeriods(int fiscalYearStartMonth, int fiscalYear) {
-        String fiscalYearName = deriveFiscalYearName(fiscalYearStartMonth, fiscalYear);
-        List<GeneratedPeriod> periods = new ArrayList<>();
-
-        for (int i = 0; i < 12; i++) {
-            int month = ((fiscalYearStartMonth - 1 + i) % 12) + 1;
-            int year = fiscalYear + ((fiscalYearStartMonth - 1 + i) / 12);
-            LocalDate start = LocalDate.of(year, month, 1);
-            LocalDate end = YearMonth.of(year, month).atEndOfMonth();
-
-            periods.add(new GeneratedPeriod(derivePeriodName(month, year), start, end, i + 1,
-                    deriveQuarter(month, fiscalYearStartMonth), fiscalYearName));
-        }
-
-        return periods;
-    }
-
-    private List<GeneratedPeriod> generateQuarterlyPeriods(int fiscalYearStartMonth, int fiscalYear) {
-        String fiscalYearName = deriveFiscalYearName(fiscalYearStartMonth, fiscalYear);
-        List<GeneratedPeriod> periods = new ArrayList<>();
-
-        for (int quarter = 0; quarter < 4; quarter++) {
-            int startOffset = quarter * 3;
-            int startMonth = ((fiscalYearStartMonth - 1 + startOffset) % 12) + 1;
-            int startYear = fiscalYear + ((fiscalYearStartMonth - 1 + startOffset) / 12);
-            LocalDate start = LocalDate.of(startYear, startMonth, 1);
-
-            int endOffset = startOffset + 2;
-            int endMonth = ((fiscalYearStartMonth - 1 + endOffset) % 12) + 1;
-            int endYear = fiscalYear + ((fiscalYearStartMonth - 1 + endOffset) / 12);
-            LocalDate end = YearMonth.of(endYear, endMonth).atEndOfMonth();
-
-            periods.add(new GeneratedPeriod("Q" + (quarter + 1) + "-" + fiscalYearName, start, end,
-                    quarter + 1, quarter + 1, fiscalYearName));
-        }
-
-        return periods;
-    }
-
-    /**
-     * Phase 1 approximation: 13 periods of 4 weeks each, with the final period absorbing
-     * whatever remains so the fiscal year closes exactly on the day before the next one starts.
-     * A true retail 4-4-5 week-anchored calendar is out of scope until a subledger needs it.
-     */
-    private List<GeneratedPeriod> generateFiscal445Periods(int fiscalYearStartMonth, int fiscalYearStartDay, int fiscalYear) {
-        String fiscalYearName = deriveFiscalYearName(fiscalYearStartMonth, fiscalYear);
-        LocalDate fiscalStart = LocalDate.of(fiscalYear, fiscalYearStartMonth, fiscalYearStartDay);
-        LocalDate fiscalEnd = fiscalStart.plusYears(1).minusDays(1);
-
-        List<GeneratedPeriod> periods = new ArrayList<>();
-        LocalDate cursor = fiscalStart;
-
-        for (int i = 1; i <= 13; i++) {
-            LocalDate start = cursor;
-            LocalDate end = (i == 13) ? fiscalEnd : start.plusWeeks(4).minusDays(1);
-            int quarter = Math.min(((i - 1) / 4) + 1, 4);
-
-            periods.add(new GeneratedPeriod("P" + i + "-" + fiscalYearName, start, end, i, quarter, fiscalYearName));
-            cursor = end.plusDays(1);
-        }
-
-        return periods;
-    }
-
     private AccountingCalendar findOrThrow(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AccountingCalendar", id));
-    }
-
-    public record GeneratedPeriod(String name, LocalDate startDate, LocalDate endDate,
-                                   int periodNumber, int quarter, String fiscalYear) {
     }
 }
