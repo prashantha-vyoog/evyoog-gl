@@ -18,10 +18,25 @@ public interface DimensionValueRepository extends JpaRepository<DimensionValue, 
 
     List<DimensionValue> findByFinanceDimensionIdAndParentValueId(UUID financeDimensionId, UUID parentValueId);
 
+    List<DimensionValue> findByFinanceDimensionIdAndIsActiveTrue(UUID financeDimensionId);
+
+    List<DimensionValue> findByFinanceDimensionIdAndIsPostableTrueAndIsActiveTrue(UUID financeDimensionId);
+
+    long countByParentValueIdAndIsActiveTrue(UUID parentValueId);
+
     @Query("""
             select dv from DimensionValue dv
             where dv.financeDimension.ledger.id = :ledgerId
             and dv.code = :code
             """)
     List<DimensionValue> findByLedgerIdAndCode(@Param("ledgerId") UUID ledgerId, @Param("code") String code);
+
+    @Query("""
+            select dv from DimensionValue dv
+            where dv.financeDimension.id = :financeDimensionId
+            and dv.isActive = true
+            and (lower(dv.code) like lower(concat('%', :query, '%'))
+                 or lower(dv.name) like lower(concat('%', :query, '%')))
+            """)
+    List<DimensionValue> search(@Param("financeDimensionId") UUID financeDimensionId, @Param("query") String query);
 }

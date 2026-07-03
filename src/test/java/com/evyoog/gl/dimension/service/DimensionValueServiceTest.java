@@ -15,6 +15,12 @@ import com.evyoog.gl.dimension.dto.DimensionValueResponse;
 import com.evyoog.gl.dimension.mapper.DimensionValueMapper;
 import com.evyoog.gl.dimension.repository.DimensionValueRepository;
 import com.evyoog.gl.dimension.repository.FinanceDimensionRepository;
+import com.evyoog.gl.enterprise.domain.BusinessGroup;
+import com.evyoog.gl.enterprise.domain.LegalEntity;
+import com.evyoog.gl.enterprise.repository.LegalEntityRepository;
+import com.evyoog.gl.ledger.domain.Ledger;
+import com.evyoog.gl.ledger.domain.LegalEntityLedger;
+import com.evyoog.gl.ledger.repository.LegalEntityLedgerRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +29,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,6 +47,10 @@ class DimensionValueServiceTest {
     @Mock
     private FinanceDimensionRepository financeDimensionRepository;
     @Mock
+    private LegalEntityRepository legalEntityRepository;
+    @Mock
+    private LegalEntityLedgerRepository legalEntityLedgerRepository;
+    @Mock
     private DimensionValueMapper mapper;
     @Mock
     private AuditService auditService;
@@ -46,7 +58,10 @@ class DimensionValueServiceTest {
     private DimensionValueService service;
 
     private FinanceDimension financeDimension(DimensionType type) {
-        FinanceDimension fd = FinanceDimension.builder().code("FD").name("Dimension").dimensionType(type).build();
+        Ledger ledger = Ledger.builder().code("LDG").name("Ledger").build();
+        ledger.setId(UUID.randomUUID());
+        FinanceDimension fd = FinanceDimension.builder().code("FD").name("Dimension").dimensionType(type)
+                .ledger(ledger).build();
         fd.setId(UUID.randomUUID());
         return fd;
     }
@@ -56,14 +71,20 @@ class DimensionValueServiceTest {
                 entity.getFinanceDimension().getDimensionType(), entity.getCode(), entity.getName(),
                 entity.getDescription(), null, null, null, entity.getAccountQualifier(), entity.isSummary(),
                 entity.isPostable(), entity.getNormalBalance(), entity.isGstApplicable(), entity.isTdsApplicable(),
-                entity.getTdsSection(), entity.getDisplayOrder(), entity.isActive(), Instant.now(), Instant.now());
+                entity.getTdsSection(), entity.getDisplayOrder(), entity.isActive(), null, null, null, null, null,
+                entity.getValidFrom(), entity.getValidTo(), entity.isBudgetControlled(), Instant.now(), Instant.now());
+    }
+
+    private CreateDimensionValueRequest basicRequest(UUID financeDimensionId, String code, String name,
+                                                       UUID parentValueId, AccountQualifier qualifier) {
+        return new CreateDimensionValueRequest(financeDimensionId, code, name, null, parentValueId, qualifier,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
     void createValue_success() {
         FinanceDimension fd = financeDimension(DimensionType.COST_CENTRE);
-        CreateDimensionValueRequest request = new CreateDimensionValueRequest(
-                fd.getId(), "CC-001", "Cost Centre 1", null, null, null, null, null, null, null, null, null, null);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "CC-001", "Cost Centre 1", null, null);
         DimensionValue entity = new DimensionValue();
         DimensionValue saved = DimensionValue.builder().code("CC-001").name("Cost Centre 1").financeDimension(fd).build();
         saved.setId(UUID.randomUUID());
@@ -82,8 +103,7 @@ class DimensionValueServiceTest {
     @Test
     void createValue_duplicateCode_shouldThrow409() {
         FinanceDimension fd = financeDimension(DimensionType.COST_CENTRE);
-        CreateDimensionValueRequest request = new CreateDimensionValueRequest(
-                fd.getId(), "CC-001", "Cost Centre 1", null, null, null, null, null, null, null, null, null, null);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "CC-001", "Cost Centre 1", null, null);
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
         when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "CC-001")).thenReturn(true);
@@ -96,8 +116,7 @@ class DimensionValueServiceTest {
     @Test
     void createValue_naturalAccountWithoutQualifier_shouldThrow400() {
         FinanceDimension fd = financeDimension(DimensionType.NATURAL_ACCOUNT);
-        CreateDimensionValueRequest request = new CreateDimensionValueRequest(
-                fd.getId(), "1000", "Cash", null, null, null, null, null, null, null, null, null, null);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "1000", "Cash", null, null);
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
         when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "1000")).thenReturn(false);
@@ -114,9 +133,8 @@ class DimensionValueServiceTest {
                 .accountQualifier(AccountQualifier.ASSET).build();
         parent.setId(UUID.randomUUID());
 
-        CreateDimensionValueRequest request = new CreateDimensionValueRequest(
-                fd.getId(), "2000", "Payables", null, parent.getId(), AccountQualifier.LIABILITY,
-                null, null, null, null, null, null, null);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "2000", "Payables", parent.getId(),
+                AccountQualifier.LIABILITY);
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
         when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "2000")).thenReturn(false);
@@ -130,8 +148,7 @@ class DimensionValueServiceTest {
     @Test
     void autoDeriveNormalBalance_asset_returnsDR() {
         FinanceDimension fd = financeDimension(DimensionType.NATURAL_ACCOUNT);
-        CreateDimensionValueRequest request = new CreateDimensionValueRequest(
-                fd.getId(), "1000", "Cash", null, null, AccountQualifier.ASSET, null, null, null, null, null, null, null);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "1000", "Cash", null, AccountQualifier.ASSET);
         DimensionValue entity = new DimensionValue();
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
@@ -150,9 +167,8 @@ class DimensionValueServiceTest {
     @Test
     void autoDeriveNormalBalance_liability_returnsCR() {
         FinanceDimension fd = financeDimension(DimensionType.NATURAL_ACCOUNT);
-        CreateDimensionValueRequest request = new CreateDimensionValueRequest(
-                fd.getId(), "2000", "Payables", null, null, AccountQualifier.LIABILITY,
-                null, null, null, null, null, null, null);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "2000", "Payables", null,
+                AccountQualifier.LIABILITY);
         DimensionValue entity = new DimensionValue();
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
@@ -166,6 +182,63 @@ class DimensionValueServiceTest {
 
         org.mockito.Mockito.verify(repository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getNormalBalance()).isEqualTo(NormalBalance.CR);
+    }
+
+    @Test
+    void createIntercompanyValue_withoutCounterparty_shouldThrow400() {
+        FinanceDimension fd = financeDimension(DimensionType.INTERCOMPANY);
+        CreateDimensionValueRequest request = basicRequest(fd.getId(), "IC-001", "Intercompany 1", null, null);
+
+        when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
+        when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "IC-001")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(request, "prashanth"))
+                .isInstanceOf(ValidationException.class)
+                .hasFieldOrPropertyWithValue("code", "IC_COUNTERPARTY_REQUIRED");
+    }
+
+    @Test
+    void createIntercompanyValue_counterpartyWrongGroup_shouldThrow409() {
+        FinanceDimension fd = financeDimension(DimensionType.INTERCOMPANY);
+
+        BusinessGroup ledgerGroup = BusinessGroup.builder().code("BG1").name("Group 1").build();
+        ledgerGroup.setId(UUID.randomUUID());
+        LegalEntity ownerLe = LegalEntity.builder().code("LE1").name("Owner LE").businessGroup(ledgerGroup).build();
+        ownerLe.setId(UUID.randomUUID());
+        LegalEntityLedger lel = LegalEntityLedger.builder().legalEntity(ownerLe).ledger(fd.getLedger()).build();
+
+        BusinessGroup otherGroup = BusinessGroup.builder().code("BG2").name("Group 2").build();
+        otherGroup.setId(UUID.randomUUID());
+        LegalEntity counterparty = LegalEntity.builder().code("LE2").name("Counterparty LE").businessGroup(otherGroup).build();
+        counterparty.setId(UUID.randomUUID());
+
+        CreateDimensionValueRequest request = new CreateDimensionValueRequest(fd.getId(), "IC-001", "Intercompany 1",
+                null, null, null, null, null, null, null, null, null, null, counterparty.getId(), null, null, null,
+                null, null, null);
+
+        when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
+        when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "IC-001")).thenReturn(false);
+        when(legalEntityRepository.findById(counterparty.getId())).thenReturn(Optional.of(counterparty));
+        when(legalEntityLedgerRepository.findByLedgerId(fd.getLedger().getId())).thenReturn(List.of(lel));
+
+        assertThatThrownBy(() -> service.create(request, "prashanth"))
+                .isInstanceOf(EvyoogException.class)
+                .hasFieldOrPropertyWithValue("code", "IC_COUNTERPARTY_WRONG_GROUP");
+    }
+
+    @Test
+    void createValue_invalidDateRange_shouldThrow400() {
+        FinanceDimension fd = financeDimension(DimensionType.COST_CENTRE);
+        CreateDimensionValueRequest request = new CreateDimensionValueRequest(fd.getId(), "CC-001", "Cost Centre 1",
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 1, 1), null);
+
+        when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
+        when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "CC-001")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(request, "prashanth"))
+                .isInstanceOf(ValidationException.class)
+                .hasFieldOrPropertyWithValue("code", "INVALID_DATE_RANGE");
     }
 
     @Test

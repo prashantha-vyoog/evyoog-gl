@@ -1,6 +1,7 @@
 package com.evyoog.gl.dimension.domain;
 
 import com.evyoog.gl.common.domain.AuditableEntity;
+import com.evyoog.gl.enterprise.domain.LegalEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,6 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "dimension_value", schema = "gl")
@@ -68,4 +71,30 @@ public class DimensionValue extends AuditableEntity {
 
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
+
+    // Intercompany support — mandatory when dimensionType = INTERCOMPANY
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "counterparty_legal_entity_id")
+    private LegalEntity counterpartyLegalEntity;
+
+    // Cost Centre metadata — informational Phase 1, approval routing Phase 2
+    @Column(name = "cc_manager_name")
+    private String ccManagerName;
+
+    @Column(name = "cc_manager_email")
+    private String ccManagerEmail;
+
+    @Column(name = "cc_department")
+    private String ccDepartment;
+
+    // Date range — time-bounds any dimension value
+    @Column(name = "valid_from")
+    private LocalDate validFrom;
+
+    @Column(name = "valid_to")
+    private LocalDate validTo;
+
+    // Budget control — Phase 1 stored, Phase 2 enforced by the Posting Engine
+    @Column(name = "budget_controlled", nullable = false)
+    private boolean budgetControlled;
 }

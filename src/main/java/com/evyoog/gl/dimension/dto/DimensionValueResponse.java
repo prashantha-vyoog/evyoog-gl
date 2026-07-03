@@ -5,6 +5,7 @@ import com.evyoog.gl.dimension.domain.DimensionType;
 import com.evyoog.gl.dimension.domain.NormalBalance;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record DimensionValueResponse(
@@ -28,6 +29,14 @@ public record DimensionValueResponse(
         String tdsSection,
         int displayOrder,
         boolean isActive,
+        UUID counterpartyLegalEntityId,
+        String counterpartyLegalEntityName,
+        String ccManagerName,
+        String ccManagerEmail,
+        String ccDepartment,
+        LocalDate validFrom,
+        LocalDate validTo,
+        boolean budgetControlled,
         Instant createdAt,
         Instant updatedAt
 ) {

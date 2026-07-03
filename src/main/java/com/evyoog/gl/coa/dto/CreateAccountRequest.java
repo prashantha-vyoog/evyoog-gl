@@ -1,4 +1,4 @@
-package com.evyoog.gl.dimension.dto;
+package com.evyoog.gl.coa.dto;
 
 import com.evyoog.gl.dimension.domain.AccountQualifier;
 import com.evyoog.gl.dimension.domain.NormalBalance;
@@ -9,10 +9,10 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record CreateDimensionValueRequest(
+public record CreateAccountRequest(
 
-        @NotNull(message = "financeDimensionId is required")
-        UUID financeDimensionId,
+        @NotNull(message = "ledgerId is required")
+        UUID ledgerId,
 
         @NotBlank(message = "code is required")
         @Size(max = 30, message = "code must be at most 30 characters")
@@ -25,9 +25,10 @@ public record CreateDimensionValueRequest(
         @Size(max = 500, message = "description must be at most 500 characters")
         String description,
 
-        UUID parentValueId,
+        UUID parentAccountId,
 
-        AccountQualifier accountQualifier,
+        @NotNull(message = "qualifier is required")
+        AccountQualifier qualifier,
 
         Boolean isSummary,
 
@@ -44,22 +45,22 @@ public record CreateDimensionValueRequest(
 
         Integer displayOrder,
 
-        // Intercompany — required when the owning Finance Dimension is INTERCOMPANY
+        // Intercompany — required when the Ledger's INTERCOMPANY dimension value is created via this endpoint
         UUID counterpartyLegalEntityId,
 
-        // Cost Centre metadata — informational Phase 1
+        // Cost Centre metadata
         String ccManagerName,
 
         String ccManagerEmail,
 
         String ccDepartment,
 
-        // Date range — all dimension types
+        // Date range
         LocalDate validFrom,
 
         LocalDate validTo,
 
-        // Budget control — Phase 1 stored, Phase 2 enforced
+        // Budget control
         Boolean budgetControlled
 ) {
 }

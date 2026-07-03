@@ -19,6 +19,8 @@ public interface DimensionValueMapper {
     @Mapping(target = "tdsApplicable", ignore = true)
     @Mapping(target = "displayOrder", ignore = true)
     @Mapping(target = "normalBalance", ignore = true)
+    @Mapping(target = "counterpartyLegalEntity", ignore = true)
+    @Mapping(target = "budgetControlled", ignore = true)
     DimensionValue toEntity(CreateDimensionValueRequest request);
 
     @Mapping(source = "financeDimension.id", target = "financeDimensionId")
@@ -31,10 +33,14 @@ public interface DimensionValueMapper {
     @Mapping(source = "active", target = "isActive")
     @Mapping(source = "summary", target = "isSummary")
     @Mapping(source = "postable", target = "isPostable")
+    @Mapping(source = "counterpartyLegalEntity.id", target = "counterpartyLegalEntityId")
+    @Mapping(source = "counterpartyLegalEntity.name", target = "counterpartyLegalEntityName")
     DimensionValueResponse toResponse(DimensionValue entity);
 
     @Mapping(target = "summary", ignore = true)
     @Mapping(target = "postable", ignore = true)
+    @Mapping(target = "counterpartyLegalEntity", ignore = true)
+    @Mapping(target = "budgetControlled", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateFromRequest(UpdateDimensionValueRequest request, @MappingTarget DimensionValue entity);
 }

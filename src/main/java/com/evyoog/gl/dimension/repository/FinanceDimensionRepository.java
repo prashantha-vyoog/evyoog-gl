@@ -5,6 +5,7 @@ import com.evyoog.gl.dimension.domain.FinanceDimension;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface FinanceDimensionRepository extends JpaRepository<FinanceDimension, UUID> {
@@ -18,4 +19,6 @@ public interface FinanceDimensionRepository extends JpaRepository<FinanceDimensi
     List<FinanceDimension> findByLedgerId(UUID ledgerId);
 
     List<FinanceDimension> findByLedgerIdAndDimensionType(UUID ledgerId, DimensionType dimensionType);
+
+    Optional<FinanceDimension> findByLedgerIdAndDimensionTypeAndIsActiveTrue(UUID ledgerId, DimensionType dimensionType);
 }

@@ -1,11 +1,11 @@
-package com.evyoog.gl.dimension.dto;
+package com.evyoog.gl.coa.dto;
 
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record UpdateDimensionValueRequest(
+public record UpdateAccountRequest(
 
         @Size(max = 255, message = "name must be at most 255 characters")
         String name,

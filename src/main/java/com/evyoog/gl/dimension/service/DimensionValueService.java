@@ -17,10 +17,14 @@ import com.evyoog.gl.dimension.dto.UpdateDimensionValueRequest;
 import com.evyoog.gl.dimension.mapper.DimensionValueMapper;
 import com.evyoog.gl.dimension.repository.DimensionValueRepository;
 import com.evyoog.gl.dimension.repository.FinanceDimensionRepository;
+import com.evyoog.gl.enterprise.domain.LegalEntity;
+import com.evyoog.gl.enterprise.repository.LegalEntityRepository;
+import com.evyoog.gl.ledger.repository.LegalEntityLedgerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,6 +44,8 @@ public class DimensionValueService {
 
     private final DimensionValueRepository repository;
     private final FinanceDimensionRepository financeDimensionRepository;
+    private final LegalEntityRepository legalEntityRepository;
+    private final LegalEntityLedgerRepository legalEntityLedgerRepository;
     private final DimensionValueMapper mapper;
     private final AuditService auditService;
 
@@ -74,6 +80,13 @@ public class DimensionValueService {
             }
         }
 
+        LegalEntity counterparty = null;
+        if (financeDimension.getDimensionType() == DimensionType.INTERCOMPANY) {
+            counterparty = validateIntercompanyCounterparty(financeDimension, request.counterpartyLegalEntityId());
+        }
+
+        validateDateRange(request.validFrom(), request.validTo());
+
         DimensionValue entity = mapper.toEntity(request);
         entity.setFinanceDimension(financeDimension);
         entity.setParentValue(parent);
@@ -85,6 +98,8 @@ public class DimensionValueService {
         entity.setNormalBalance(request.normalBalance() != null
                 ? request.normalBalance()
                 : deriveNormalBalance(request.accountQualifier()));
+        entity.setCounterpartyLegalEntity(counterparty);
+        entity.setBudgetControlled(request.budgetControlled() != null && request.budgetControlled());
         entity.setCreatedBy(performedBy);
         entity.setUpdatedBy(performedBy);
 
@@ -100,12 +115,24 @@ public class DimensionValueService {
         DimensionValue entity = findOrThrow(id);
         DimensionValueResponse before = mapper.toResponse(entity);
 
+        validateDateRange(
+                request.validFrom() != null ? request.validFrom() : entity.getValidFrom(),
+                request.validTo() != null ? request.validTo() : entity.getValidTo());
+
         mapper.updateFromRequest(request, entity);
         if (request.isSummary() != null) {
             entity.setSummary(request.isSummary());
         }
         if (request.isPostable() != null) {
             entity.setPostable(request.isPostable());
+        }
+        if (request.budgetControlled() != null) {
+            entity.setBudgetControlled(request.budgetControlled());
+        }
+        if (request.counterpartyLegalEntityId() != null) {
+            LegalEntity counterparty = legalEntityRepository.findById(request.counterpartyLegalEntityId())
+                    .orElseThrow(() -> new ResourceNotFoundException("LegalEntity", request.counterpartyLegalEntityId()));
+            entity.setCounterpartyLegalEntity(counterparty);
         }
         entity.setUpdatedBy(performedBy);
 
@@ -147,6 +174,38 @@ public class DimensionValueService {
     @Transactional(readOnly = true)
     public List<DimensionValueResponse> search(UUID ledgerId, String code) {
         return repository.findByLedgerIdAndCode(ledgerId, code).stream().map(mapper::toResponse).toList();
+    }
+
+    private LegalEntity validateIntercompanyCounterparty(FinanceDimension financeDimension, UUID counterpartyLegalEntityId) {
+        if (counterpartyLegalEntityId == null) {
+            throw new ValidationException("IC_COUNTERPARTY_REQUIRED",
+                    "An Intercompany dimension value must reference a counterparty Legal Entity. " +
+                            "Provide counterpartyLegalEntityId.",
+                    "counterpartyLegalEntityId");
+        }
+
+        LegalEntity counterparty = legalEntityRepository.findById(counterpartyLegalEntityId)
+                .orElseThrow(() -> new ResourceNotFoundException("LegalEntity", counterpartyLegalEntityId));
+
+        UUID ledgerBusinessGroupId = legalEntityLedgerRepository.findByLedgerId(financeDimension.getLedger().getId())
+                .stream()
+                .map(lel -> lel.getLegalEntity().getBusinessGroup().getId())
+                .findFirst()
+                .orElseThrow(() -> new EvyoogException("LEDGER_NOT_LINKED_TO_LEGAL_ENTITY",
+                        "Cannot validate Intercompany counterparty: this Ledger has no Legal Entity assigned yet."));
+
+        if (!counterparty.getBusinessGroup().getId().equals(ledgerBusinessGroupId)) {
+            throw new EvyoogException("IC_COUNTERPARTY_WRONG_GROUP",
+                    "Counterparty Legal Entity must belong to the same Business Group as this Ledger.");
+        }
+
+        return counterparty;
+    }
+
+    private void validateDateRange(LocalDate validFrom, LocalDate validTo) {
+        if (validFrom != null && validTo != null && validTo.isBefore(validFrom)) {
+            throw new ValidationException("INVALID_DATE_RANGE", "validTo must be on or after validFrom.", "validTo");
+        }
     }
 
     private NormalBalance deriveNormalBalance(AccountQualifier qualifier) {
