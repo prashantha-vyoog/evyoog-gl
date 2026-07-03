@@ -7,7 +7,9 @@
       "Bash(echo \"PID:$!\")",
       "Bash(curl -s http://localhost:8080/api-docs)",
       "Bash(python3 -c ' *)",
-      "Bash(pkill -f \"spring-boot:run\")"
+      "Bash(pkill -f \"spring-boot:run\")",
+      "Bash(mvn -q -o test-compile)",
+      "Bash(mvn -q -o test -Dtest=PostingEngineTest)"
     ]
   }
 }

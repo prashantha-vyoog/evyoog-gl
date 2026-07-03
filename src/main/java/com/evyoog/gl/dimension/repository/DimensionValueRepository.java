@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface DimensionValueRepository extends JpaRepository<DimensionValue, UUID> {
@@ -21,6 +22,10 @@ public interface DimensionValueRepository extends JpaRepository<DimensionValue, 
     List<DimensionValue> findByFinanceDimensionIdAndIsActiveTrue(UUID financeDimensionId);
 
     List<DimensionValue> findByFinanceDimensionIdAndIsPostableTrueAndIsActiveTrue(UUID financeDimensionId);
+
+    Optional<DimensionValue> findByFinanceDimensionIdAndCodeAndIsActiveTrue(UUID financeDimensionId, String code);
+
+    Optional<DimensionValue> findByIdAndFinanceDimensionIdAndIsActiveTrue(UUID id, UUID financeDimensionId);
 
     long countByParentValueIdAndIsActiveTrue(UUID parentValueId);
 

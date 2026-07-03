@@ -19,6 +19,8 @@ public interface LegalEntityLedgerRepository extends JpaRepository<LegalEntityLe
 
     List<LegalEntityLedger> findByLedgerId(UUID ledgerId);
 
+    boolean existsByLegalEntityIdAndLedgerIdAndIsActiveTrue(UUID legalEntityId, UUID ledgerId);
+
     @Query("""
             select lel.ledger from LegalEntityLedger lel
             where lel.legalEntity.id = :legalEntityId
