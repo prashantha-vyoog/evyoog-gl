@@ -13,4 +13,8 @@ public interface AccountBalanceRepository extends JpaRepository<AccountBalance, 
     // brittle. Per account+period, the candidate list here is small.
     List<AccountBalance> findByLedgerIdAndLegalEntityIdAndAccountingPeriodIdAndNaturalAccountId(
             UUID ledgerId, UUID legalEntityId, UUID accountingPeriodId, UUID naturalAccountId);
+
+    List<AccountBalance> findByLegalEntityIdAndAccountingPeriodId(UUID legalEntityId, UUID accountingPeriodId);
+
+    boolean existsByLegalEntityIdAndAccountingPeriodId(UUID legalEntityId, UUID accountingPeriodId);
 }
