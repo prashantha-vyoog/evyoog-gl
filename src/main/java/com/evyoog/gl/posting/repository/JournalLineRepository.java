@@ -13,4 +13,7 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
 
     List<JournalLine> findByNaturalAccountIdAndJournalHeader_LegalEntityIdAndJournalHeader_AccountingPeriodIdAndJournalHeader_Status(
             UUID naturalAccountId, UUID legalEntityId, UUID accountingPeriodId, JournalStatus status);
+
+    List<JournalLine> findByJournalHeader_LegalEntityIdAndJournalHeader_AccountingPeriodIdAndGstApplicableTrueAndJournalHeader_Status(
+            UUID legalEntityId, UUID accountingPeriodId, JournalStatus status);
 }

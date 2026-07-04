@@ -16,4 +16,6 @@ public interface BusinessUnitRepository extends JpaRepository<BusinessUnit, UUID
     Optional<BusinessUnit> findByGstin(String gstin);
 
     boolean existsByGstin(String gstin);
+
+    Optional<BusinessUnit> findFirstByLegalEntityIdAndIsActiveTrue(UUID legalEntityId);
 }
