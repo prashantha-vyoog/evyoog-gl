@@ -87,7 +87,9 @@ spring:
 `gl.journal_line.account_combination` and `gl.account_balance.account_combination` are `jsonb`. Map with:
 
 ```java
-// Hibernate 7 handles JSONB natively — no @Type annotation needed
+// Hibernate 7 JSONB mapping for Map<String,String> and Map<String,Object>:
+// Use @JdbcTypeCode(SqlTypes.JSON) on the field
+// Import: org.hibernate.annotations.JdbcTypeCode and org.hibernate.type.SqlTypes
 @Column(name = "account_combination", columnDefinition = "jsonb")
 private Map<String, String> accountCombination;
 ```
