@@ -9,7 +9,9 @@
       "Bash(python3 -c ' *)",
       "Bash(pkill -f \"spring-boot:run\")",
       "Bash(mvn -q -o test-compile)",
-      "Bash(mvn -q -o test -Dtest=PostingEngineTest)"
+      "Bash(mvn -q -o test -Dtest=PostingEngineTest)",
+      "Bash(nohup mvn -q spring-boot:run)",
+      "Bash(disown)"
     ]
   }
 }

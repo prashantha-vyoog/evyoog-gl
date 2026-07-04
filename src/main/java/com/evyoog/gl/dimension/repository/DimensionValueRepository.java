@@ -1,5 +1,6 @@
 package com.evyoog.gl.dimension.repository;
 
+import com.evyoog.gl.dimension.domain.AccountQualifier;
 import com.evyoog.gl.dimension.domain.DimensionValue;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -35,6 +36,9 @@ public interface DimensionValueRepository extends JpaRepository<DimensionValue, 
             and dv.code = :code
             """)
     List<DimensionValue> findByLedgerIdAndCode(@Param("ledgerId") UUID ledgerId, @Param("code") String code);
+
+    List<DimensionValue> findByFinanceDimension_Ledger_IdAndAccountQualifierIn(
+            UUID ledgerId, List<AccountQualifier> qualifiers);
 
     @Query("""
             select dv from DimensionValue dv
