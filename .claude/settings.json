@@ -11,7 +11,10 @@
       "Bash(mvn -q -o test-compile)",
       "Bash(mvn -q -o test -Dtest=PostingEngineTest)",
       "Bash(nohup mvn -q spring-boot:run)",
-      "Bash(disown)"
+      "Bash(disown)",
+      "Bash(mvn -q test -Dtest=BalanceSheetServiceTest)",
+      "Bash(awk -F'[, ]+' '{run+=$3; fail+=$5; err+=$7} END{print \"Total run:\", run, \"Failures:\", fail, \"Errors:\", err}')",
+      "Bash(kill 65669 65723)"
     ]
   }
 }
