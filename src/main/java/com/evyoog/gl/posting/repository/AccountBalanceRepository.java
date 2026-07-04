@@ -17,4 +17,9 @@ public interface AccountBalanceRepository extends JpaRepository<AccountBalance, 
     List<AccountBalance> findByLegalEntityIdAndAccountingPeriodId(UUID legalEntityId, UUID accountingPeriodId);
 
     boolean existsByLegalEntityIdAndAccountingPeriodId(UUID legalEntityId, UUID accountingPeriodId);
+
+    // Multiple rows are possible when the same natural account appears under
+    // different dimension combinations — the caller sums beginningBalance across them.
+    List<AccountBalance> findByLegalEntityIdAndAccountingPeriodIdAndNaturalAccountId(
+            UUID legalEntityId, UUID accountingPeriodId, UUID naturalAccountId);
 }
