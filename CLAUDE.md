@@ -593,3 +593,21 @@ private Map<String, String> accountCombination;
 - Actual version: Spring Boot 4.0.7 (NOT 3.3.x as original CLAUDE.md stated)
 - Java 21 (Microsoft build), Hibernate 7, MapStruct 1.6.3, Springdoc OpenAPI 3.0.2
 
+
+### GL-14 — recurring_journal_template
+- Table did NOT exist in V1 baseline — created in full in V20
+- Template lines stored as typed POJO list (RecurringTemplateLine), NOT List<Map<String,Object>>
+- Raw Map<String,Object> deserializes BigDecimal as Double via Hibernate 7 JSON — 
+  always use a typed POJO for JSONB that contains numeric fields
+
+### GL-14 — Lombok boolean vs Boolean convention
+- primitive boolean fields (isActive on AuditableEntity): Lombok generates
+  isActive() / setActive(false)  ← no "Is" in setter
+- Boolean wrapper fields (isReversal on JournalHeader): Lombok generates
+  getIsReversal() / setIsReversal(Boolean)  ← "Is" preserved in both
+- Check FinanceDimensionService.deactivate() as the reference pattern for isActive
+- Check JournalHeader as the reference pattern for Boolean wrapper fields
+
+### GL-14 — journal_category RECURRING seed
+- RECURRING journal_source: already seeded in V9
+- RECURRING journal_category: NOT seeded until V20 — seeded there
