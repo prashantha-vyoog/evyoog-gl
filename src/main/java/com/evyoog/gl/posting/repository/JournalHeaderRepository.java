@@ -21,6 +21,8 @@ public interface JournalHeaderRepository extends JpaRepository<JournalHeader, UU
 
     List<JournalHeader> findByLegalEntityId(UUID legalEntityId);
 
+    List<JournalHeader> findByLegalEntityIdAndStatus(UUID legalEntityId, JournalStatus status);
+
     List<JournalHeader> findByAccountingPeriodId(UUID accountingPeriodId);
 
     @Query("""
