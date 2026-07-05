@@ -499,3 +499,97 @@ git push origin main
 
 *eVyoog ERP · CLAUDE.md · PLATFORM_FOUNDATION_v2.0 · GL_CORE_v1.0*
 *Keep this file in the root of the repository. Claude Code reads it automatically.*
+
+---
+
+## Technical Deviations — Discovered During Build (GL-02 through GL-13)
+
+These correct the original CLAUDE.md assumptions. Claude Code MUST read these
+before building any future capability.
+
+### GL-02 — ConsumptionContext field name
+- Field is `segmentType` (NOT `contextType`) on ConsumptionContext entity
+- ConsumptionContext has: `code`, `name`, `segmentType`, `organisationName`,
+  `primaryContactName`, `primaryContactEmail`
+
+### GL-02 — provisioningAnswers
+- `provisioningAnswers` column was missing from the V1 baseline entity
+- Added via V2 migration — now present on ConsumptionContext
+
+### GL-04 — DimensionValue parentValue
+- `DimensionValue.parentValue` is a `@ManyToOne` entity relation (NOT a raw UUID field)
+- Access via `dv.getParentValue().getId()` — not `dv.getParentValueId()`
+
+### GL-05 — DimensionType enum
+- `DimensionType` enum acts as Oracle-style segment qualifier on `DimensionValue`
+- Used as `segmentType` on `ConsumptionContext` (confirmed naming)
+
+### GL-05 — Intercompany dimension values
+- IC dimension values require `counterparty_legal_entity_id` FK (added via V5 migration)
+
+### GL-05 — Cost Centre metadata
+- `dimension_value` has: `cc_manager_name`, `cc_manager_email`, `cc_department`,
+  `valid_from`, `valid_to`, `budget_controlled` (added via V5 migration)
+
+### GL-11 — JSONB on Map fields (Hibernate 7)
+- Hibernate 7 native JSONB requires `@JdbcTypeCode(SqlTypes.JSON)` on Map fields
+- Do NOT use `hibernate-types-60` or `@Type` annotation — these do not work with Hibernate 7
+```java
+@JdbcTypeCode(SqlTypes.JSON)
+@Column(name = "account_combination", columnDefinition = "jsonb")
+private Map<String, String> accountCombination;
+```
+
+### GL-11 — currency codes
+- Use `VARCHAR(3)` NOT `CHAR(3)` for currency code columns
+
+### GL-11 — AuditableEntity
+- Subclasses MUST NOT redeclare `isActive` — it is already on `AuditableEntity`
+- Redeclaring it causes Hibernate mapping conflicts
+
+### GL-11 — Timestamp annotations
+- Use `@CreationTimestamp` / `@UpdateTimestamp` with `Instant` type
+- Do NOT use manual `OffsetDateTime.now()` defaults
+
+### GL-11 — JournalLine debit/credit columns
+- `JournalLine` uses SPLIT columns: `debitAmount` and `creditAmount` (BigDecimal)
+- NOT a single `amount` + `debitCredit` string as the design doc assumed
+- Reversal (GL-13) flips by swapping the two fields
+
+### GL-12 — PostingEngine row creation (CRITICAL)
+- `PostingEngine.post()` always creates a NEW JournalHeader row (new ID, new journal number)
+- It does NOT update existing rows in place — this is tested, load-bearing behavior
+- Do NOT attempt to refactor PostingEngine in any future capability
+- ApprovalService.approve() follows this pattern:
+    original row updated to APPROVED → PostingEngine creates new POSTED row
+    approval-history and approve endpoint keyed to original journal ID
+
+### GL-12 — Period-open gate location
+- The period-open gate lives SOLELY inside `PostingEngine.postThick()`
+- Do NOT duplicate this check in ApprovalService, ReversalService, or any other service
+
+### GL-13 — Reversal column names (CRITICAL)
+- Reversal columns are: `reversal_of_id` (NOT `original_journal_id`) and `is_reversal`
+- Both exist from V9 baseline — V19 only added a partial index
+- `findByOriginalJournalId` query method must use `reversal_of_id` column
+
+### GL-13 — Lombok Boolean wrapper
+- `is_reversal` maps to `Boolean` (wrapper, NOT boolean primitive)
+- Lombok generates: `getIsReversal()` / `setIsReversal(Boolean)`
+- NOT `setReversal()` — the "is" stripping only applies to primitive boolean
+
+### GL-13 — JournalHeader entity relations
+- `legalEntity`, `ledger`, `accountingPeriod` on JournalHeader are `@ManyToOne` entity relations
+- NOT raw UUID fields — access via `journal.getLegalEntity().getId()` etc.
+
+### GL-13 — REVERSAL seed data
+- `REVERSAL` journal_source and journal_category already seeded from V9 baseline
+- Do NOT re-insert in any future migration
+
+### General — .claude/ folder
+- `.claude/` is in `.gitignore` — do not commit Claude Code session files
+
+### General — Spring Boot version
+- Actual version: Spring Boot 4.0.7 (NOT 3.3.x as original CLAUDE.md stated)
+- Java 21 (Microsoft build), Hibernate 7, MapStruct 1.6.3, Springdoc OpenAPI 3.0.2
+
