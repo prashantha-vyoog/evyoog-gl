@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface JournalHeaderRepository extends JpaRepository<JournalHeader, UUID> {
@@ -24,6 +25,10 @@ public interface JournalHeaderRepository extends JpaRepository<JournalHeader, UU
     List<JournalHeader> findByLegalEntityIdAndStatus(UUID legalEntityId, JournalStatus status);
 
     List<JournalHeader> findByAccountingPeriodId(UUID accountingPeriodId);
+
+    Optional<JournalHeader> findByReversalOfId(UUID reversalOfId);
+
+    boolean existsByReversalOfId(UUID reversalOfId);
 
     @Query("""
             select jh from JournalHeader jh
