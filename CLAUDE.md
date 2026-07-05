@@ -611,3 +611,23 @@ private Map<String, String> accountCombination;
 ### GL-14 — journal_category RECURRING seed
 - RECURRING journal_source: already seeded in V9
 - RECURRING journal_category: NOT seeded until V20 — seeded there
+
+### GL-16 — aie schema reality (CRITICAL for GL-29)
+- Only aie.sla_event_log existed from V1 baseline (owned by PostingEngine.emitEvent()
+  for EVENT_ONLY mode) — do NOT overload it
+- interface_batch, interface_line, interface_error, deduplication_log:
+  all created in V21 — did NOT exist before GL-16
+- GL-16 post-stage acknowledgement uses aie.batch_ack_log (new in V21),
+  not aie.sla_event_log
+
+### GL-16 — pipeline transaction pattern
+- All 4 stages run in one @Transactional method
+- Validation/enrichment/posting failures are CAUGHT (not thrown) so FAILED
+  batch persists with line-level errors — only DUPLICATE_EVENT_ID throws
+  before any row is written
+- This pattern makes GET /batches/{id}/errors and resubmit meaningful
+
+### GL-16 — enrichment pattern
+- accountCode resolved against Ledger's NATURAL_ACCOUNT FinanceDimension
+  (same pattern PostingEngine uses internally)
+- GST/TDS flags filled from DimensionValue account master when caller omits them
