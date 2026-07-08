@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,24 +35,28 @@ public class RecurringJournalController {
 
     @PostMapping("/api/v1/gl/recurring-templates")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:recurring:create')")
     @Operation(summary = "Create a Recurring Journal template")
     public ApiResponse<RecurringTemplateResponse> createTemplate(@Valid @RequestBody CreateRecurringTemplateRequest request) {
         return ApiResponse.created(service.createTemplate(request));
     }
 
     @GetMapping("/api/v1/gl/recurring-templates/{id}")
+    @PreAuthorize("hasAuthority('gl:recurring:view')")
     @Operation(summary = "Get a Recurring Journal template by ID")
     public ApiResponse<RecurringTemplateResponse> getTemplate(@PathVariable UUID id) {
         return ApiResponse.ok(service.getTemplate(id));
     }
 
     @GetMapping("/api/v1/gl/recurring-templates")
+    @PreAuthorize("hasAuthority('gl:recurring:view')")
     @Operation(summary = "List active Recurring Journal templates for a Legal Entity")
     public ApiResponse<List<RecurringTemplateResponse>> listTemplates(@RequestParam UUID legalEntityId) {
         return ApiResponse.ok(service.listTemplates(legalEntityId));
     }
 
     @PatchMapping("/api/v1/gl/recurring-templates/{id}/deactivate")
+    @PreAuthorize("hasAuthority('gl:recurring:edit')")
     @Operation(summary = "Deactivate a Recurring Journal template")
     public ApiResponse<RecurringTemplateResponse> deactivateTemplate(
             @PathVariable UUID id,
@@ -61,6 +66,7 @@ public class RecurringJournalController {
 
     @PostMapping("/api/v1/gl/recurring-templates/{id}/generate")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:recurring:create')")
     @Operation(summary = "Generate and post a journal from a Recurring Journal template for a target period")
     public ApiResponse<GenerateRecurringJournalResponse> generate(
             @PathVariable UUID id,
@@ -69,6 +75,7 @@ public class RecurringJournalController {
     }
 
     @GetMapping("/api/v1/gl/recurring-templates/{id}/runs")
+    @PreAuthorize("hasAuthority('gl:recurring:view')")
     @Operation(summary = "Chronological generation history for a Recurring Journal template")
     public ApiResponse<List<RecurringRunResponse>> getRuns(@PathVariable UUID id) {
         return ApiResponse.ok(service.getRuns(id));

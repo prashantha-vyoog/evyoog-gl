@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +37,7 @@ public class LedgerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:ledger:manage')")
     @Operation(summary = "Create a ledger")
     public ApiResponse<LedgerResponse> create(
             @Valid @RequestBody CreateLedgerRequest request,
@@ -44,12 +46,14 @@ public class LedgerController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:ledger:view')")
     @Operation(summary = "Get a ledger by id")
     public ApiResponse<LedgerResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:ledger:view')")
     @Operation(summary = "List ledgers, optionally filtered by business group")
     public ApiResponse<List<LedgerResponse>> list(
             @RequestParam(required = false) UUID businessGroupId) {
@@ -57,6 +61,7 @@ public class LedgerController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:ledger:manage')")
     @Operation(summary = "Update mutable fields of a ledger")
     public ApiResponse<LedgerResponse> update(
             @PathVariable UUID id,
@@ -66,6 +71,7 @@ public class LedgerController {
     }
 
     @PatchMapping("/{id}/finance-mode")
+    @PreAuthorize("hasAuthority('gl:ledger:manage')")
     @Operation(summary = "Upgrade a ledger's finance mode (EVENT_ONLY -> THIN -> THICK only)")
     public ApiResponse<LedgerResponse> upgradeFinanceMode(
             @PathVariable UUID id,
@@ -75,6 +81,7 @@ public class LedgerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:ledger:manage')")
     @Operation(summary = "Soft-delete a ledger (isActive = false)")
     public ApiResponse<Void> deactivate(
             @PathVariable UUID id,

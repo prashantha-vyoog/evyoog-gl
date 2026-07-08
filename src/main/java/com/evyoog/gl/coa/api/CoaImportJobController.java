@@ -6,6 +6,7 @@ import com.evyoog.gl.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/gl/coa-import-jobs")
 @RequiredArgsConstructor
 @Tag(name = "GL-05 CoA Import Jobs (scaffold)")
+@PreAuthorize("hasAuthority('gl:accounts:view')")
 public class CoaImportJobController {
 
     private final CoaImportJobService service;

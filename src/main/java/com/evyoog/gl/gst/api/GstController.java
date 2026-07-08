@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +33,7 @@ public class GstController {
     private final GstService gstService;
 
     @GetMapping("/api/v1/gl/gst/gstr3b")
+    @PreAuthorize("hasAuthority('gl:gst:view')")
     @Operation(summary = "GSTR-3B summary — output tax collected, input tax credit, and net payable")
     public ApiResponse<GstrSummaryResponse> getGstr3b(
             @RequestParam UUID legalEntityId,
@@ -40,6 +42,7 @@ public class GstController {
     }
 
     @GetMapping("/api/v1/gl/gst/gstr1")
+    @PreAuthorize("hasAuthority('gl:gst:view')")
     @Operation(summary = "GSTR-1 outward supplies detail")
     public ApiResponse<Gstr1Response> getGstr1(
             @RequestParam UUID legalEntityId,
@@ -48,6 +51,7 @@ public class GstController {
     }
 
     @GetMapping("/api/v1/gl/gst/transactions")
+    @PreAuthorize("hasAuthority('gl:gst:view')")
     @Operation(summary = "All GST-applicable journal lines for a Legal Entity and period")
     public ApiResponse<List<GstTransactionDetail>> getTransactions(
             @RequestParam UUID legalEntityId,
@@ -58,6 +62,7 @@ public class GstController {
 
     @PostMapping("/api/v1/gl/gst/export")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:gst:export')")
     @Operation(summary = "Generate and store a GSTR-1 or GSTR-3B export job")
     public ApiResponse<GstrExportResponse> createExport(
             @Valid @RequestBody CreateGstrExportRequest request,
@@ -66,6 +71,7 @@ public class GstController {
     }
 
     @GetMapping("/api/v1/gl/gst/export/{jobId}")
+    @PreAuthorize("hasAuthority('gl:gst:view')")
     @Operation(summary = "Fetch a previously generated GSTR export job")
     public ApiResponse<GstrExportResponse> getExport(@PathVariable UUID jobId) {
         return ApiResponse.ok(gstService.getExportJob(jobId));

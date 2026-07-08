@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +33,7 @@ public class BusinessGroupController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Create a business group")
     public ApiResponse<BusinessGroupResponse> create(
             @Valid @RequestBody CreateBusinessGroupRequest request,
@@ -40,12 +42,14 @@ public class BusinessGroupController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "Get a business group by id")
     public ApiResponse<BusinessGroupResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "List business groups, optionally filtered by consumption context")
     public ApiResponse<List<BusinessGroupResponse>> list(
             @RequestParam(required = false) UUID consumptionContextId) {

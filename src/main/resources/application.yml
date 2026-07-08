@@ -17,10 +17,16 @@ spring:
         format_sql: true
   flyway:
     enabled: true
-    schemas: gl,aie
+    schemas: gl,aie,auth
     locations: classpath:db/migration
     baseline-on-migrate: false
     validate-on-migrate: true
+
+evyoog:
+  jwt:
+    secret: ${EVYOOG_JWT_SECRET:evyoog-jwt-secret-key-minimum-256-bits-long-replace-in-production}
+    expiration-ms: 3600000
+    refresh-expiration-ms: 604800000
 
 springdoc:
   api-docs:

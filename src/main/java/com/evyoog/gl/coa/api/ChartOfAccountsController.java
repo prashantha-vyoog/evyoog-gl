@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +37,7 @@ public class ChartOfAccountsController {
     private final ChartOfAccountsService service;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:accounts:view')")
     @Operation(summary = "Get the Chart of Accounts hierarchy for a Ledger, optionally filtered by qualifier")
     public ApiResponse<AccountTreeResponse> getTree(
             @RequestParam UUID ledgerId,
@@ -44,12 +46,14 @@ public class ChartOfAccountsController {
     }
 
     @GetMapping("/postable")
+    @PreAuthorize("hasAuthority('gl:accounts:view')")
     @Operation(summary = "List postable accounts for a Ledger, excluding summary and date-expired accounts")
     public ApiResponse<List<AccountResponse>> getPostable(@RequestParam UUID ledgerId) {
         return ApiResponse.ok(service.getPostableAccounts(ledgerId));
     }
 
     @GetMapping("/search")
+    @PreAuthorize("hasAuthority('gl:accounts:view')")
     @Operation(summary = "Search accounts by code or name (case-insensitive)")
     public ApiResponse<List<AccountResponse>> search(
             @RequestParam UUID ledgerId,
@@ -58,6 +62,7 @@ public class ChartOfAccountsController {
     }
 
     @GetMapping("/{accountId}")
+    @PreAuthorize("hasAuthority('gl:accounts:view')")
     @Operation(summary = "Get a single account by id")
     public ApiResponse<AccountResponse> getById(@PathVariable UUID accountId) {
         return ApiResponse.ok(service.getById(accountId));
@@ -65,6 +70,7 @@ public class ChartOfAccountsController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:accounts:create')")
     @Operation(summary = "Create an account in the Ledger's Natural Account hierarchy")
     public ApiResponse<AccountResponse> create(
             @Valid @RequestBody CreateAccountRequest request,
@@ -73,6 +79,7 @@ public class ChartOfAccountsController {
     }
 
     @PatchMapping("/{accountId}")
+    @PreAuthorize("hasAuthority('gl:accounts:edit')")
     @Operation(summary = "Update mutable fields of an account")
     public ApiResponse<AccountResponse> update(
             @PathVariable UUID accountId,
@@ -82,6 +89,7 @@ public class ChartOfAccountsController {
     }
 
     @DeleteMapping("/{accountId}")
+    @PreAuthorize("hasAuthority('gl:accounts:edit')")
     @Operation(summary = "Soft-delete an account (rejected if it has active children)")
     public ApiResponse<Void> deactivate(
             @PathVariable UUID accountId,

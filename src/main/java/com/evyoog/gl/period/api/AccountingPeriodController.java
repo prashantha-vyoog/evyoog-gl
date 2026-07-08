@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,7 @@ public class AccountingPeriodController {
 
     @PostMapping("/api/v1/gl/accounting-calendars/{calendarId}/periods/generate")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Generate the periods for a specific fiscal year")
     public ApiResponse<List<AccountingPeriodResponse>> generate(
             @PathVariable UUID calendarId,
@@ -46,6 +48,7 @@ public class AccountingPeriodController {
 
     @PostMapping("/api/v1/gl/accounting-calendars/{calendarId}/periods/generate-next")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Generate periods for the fiscal year following the latest existing one")
     public ApiResponse<List<AccountingPeriodResponse>> generateNext(
             @PathVariable UUID calendarId,
@@ -56,6 +59,7 @@ public class AccountingPeriodController {
     }
 
     @GetMapping("/api/v1/gl/accounting-calendars/{calendarId}/periods")
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "List periods for a Calendar, ordered by start date, optionally filtered by fiscal year")
     public ApiResponse<List<AccountingPeriodResponse>> list(
             @PathVariable UUID calendarId,
@@ -64,12 +68,14 @@ public class AccountingPeriodController {
     }
 
     @GetMapping("/api/v1/gl/accounting-periods/{id}")
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "Get an accounting period by id")
     public ApiResponse<AccountingPeriodResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping("/api/v1/gl/accounting-periods/find")
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "Find the period containing a given accounting date — used to resolve journal accounting dates")
     public ApiResponse<AccountingPeriodResponse> findByDate(
             @RequestParam UUID calendarId,

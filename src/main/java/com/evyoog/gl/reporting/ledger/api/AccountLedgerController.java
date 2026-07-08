@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,7 @@ public class AccountLedgerController {
     private final AccountLedgerService accountLedgerService;
 
     @GetMapping("/api/v1/gl/reports/account-ledger")
+    @PreAuthorize("hasAuthority('gl:account-ledger:view')")
     @Operation(summary = "Drill-down: all journal lines for one account in a period, with running balance")
     public ApiResponse<AccountLedgerResponse> getAccountLedger(
             @RequestParam UUID legalEntityId,
@@ -36,6 +38,7 @@ public class AccountLedgerController {
     }
 
     @GetMapping("/api/v1/gl/reports/journal-listing")
+    @PreAuthorize("hasAuthority('gl:account-ledger:view')")
     @Operation(summary = "List journals for a Legal Entity, filterable by status, period, source, and gl date range")
     public ApiResponse<Page<JournalListingEntry>> getJournalListing(
             @RequestParam UUID legalEntityId,

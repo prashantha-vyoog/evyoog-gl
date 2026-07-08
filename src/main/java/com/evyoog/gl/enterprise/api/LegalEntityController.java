@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,7 @@ public class LegalEntityController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Create a legal entity (enforces Thin ES one-LE limit)")
     public ApiResponse<LegalEntityResponse> create(
             @Valid @RequestBody CreateLegalEntityRequest request,
@@ -42,12 +44,14 @@ public class LegalEntityController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "Get a legal entity by id")
     public ApiResponse<LegalEntityResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "List legal entities, optionally filtered by business group")
     public ApiResponse<List<LegalEntityResponse>> list(
             @RequestParam(required = false) UUID businessGroupId) {
@@ -55,6 +59,7 @@ public class LegalEntityController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Update mutable fields of a legal entity")
     public ApiResponse<LegalEntityResponse> update(
             @PathVariable UUID id,

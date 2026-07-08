@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -35,6 +36,7 @@ public class DimensionValueController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:dimension:manage')")
     @Operation(summary = "Create a dimension value")
     public ApiResponse<DimensionValueResponse> create(
             @Valid @RequestBody CreateDimensionValueRequest request,
@@ -43,12 +45,14 @@ public class DimensionValueController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:dimension:view')")
     @Operation(summary = "Get a dimension value by id")
     public ApiResponse<DimensionValueResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:dimension:view')")
     @Operation(summary = "List dimension values for a finance dimension, optionally filtered by parent value")
     public ApiResponse<List<DimensionValueResponse>> list(
             @RequestParam UUID financeDimensionId,
@@ -57,6 +61,7 @@ public class DimensionValueController {
     }
 
     @GetMapping("/search")
+    @PreAuthorize("hasAuthority('gl:dimension:view')")
     @Operation(summary = "Search dimension values by ledger and code")
     public ApiResponse<List<DimensionValueResponse>> search(
             @RequestParam UUID ledgerId,
@@ -65,6 +70,7 @@ public class DimensionValueController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:dimension:manage')")
     @Operation(summary = "Update mutable fields of a dimension value")
     public ApiResponse<DimensionValueResponse> update(
             @PathVariable UUID id,
@@ -74,6 +80,7 @@ public class DimensionValueController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:dimension:manage')")
     @Operation(summary = "Soft-delete a dimension value (isActive = false)")
     public ApiResponse<Void> deactivate(
             @PathVariable UUID id,

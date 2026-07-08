@@ -6,6 +6,7 @@ import com.evyoog.gl.reporting.pnl.service.ProfitAndLossService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ public class ProfitAndLossController {
     private final ProfitAndLossService profitAndLossService;
 
     @GetMapping("/api/v1/gl/reports/profit-and-loss")
+    @PreAuthorize("hasAuthority('gl:pl:view')")
     @Operation(summary = "Generate the Profit and Loss statement for a Legal Entity and Period")
     public ApiResponse<ProfitAndLossResponse> getProfitAndLoss(
             @RequestParam UUID legalEntityId,
@@ -28,6 +30,7 @@ public class ProfitAndLossController {
     }
 
     @GetMapping("/api/v1/gl/reports/profit-and-loss/export")
+    @PreAuthorize("hasAuthority('gl:pl:export')")
     @Operation(summary = "Export the Profit and Loss statement (Phase 1: JSON only — PDF/EXCEL generation is Phase 2)")
     public ApiResponse<ProfitAndLossResponse> exportProfitAndLoss(
             @RequestParam UUID legalEntityId,

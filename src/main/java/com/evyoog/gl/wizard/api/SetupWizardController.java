@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,6 +36,7 @@ public class SetupWizardController {
 
     @PostMapping("/run")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:wizard:run')")
     @Operation(summary = "Run the Setup Wizard for a Consumption Context, provisioning the enterprise hierarchy")
     public ApiResponse<WizardProvisioningResponse> run(
             @Valid @RequestBody WizardAnswersRequest request,
@@ -43,12 +45,14 @@ public class SetupWizardController {
     }
 
     @GetMapping("/status/{contextId}")
+    @PreAuthorize("hasAuthority('gl:wizard:view')")
     @Operation(summary = "Get the Setup Wizard completion status for a Consumption Context")
     public ApiResponse<WizardStatusResponse> status(@PathVariable UUID contextId) {
         return ApiResponse.ok(service.getStatus(contextId));
     }
 
     @GetMapping("/states")
+    @PreAuthorize("hasAuthority('gl:wizard:view')")
     @Operation(summary = "List all Indian states with their GST state codes")
     public ApiResponse<List<IndianStateResponse>> states() {
         List<IndianStateResponse> response = Arrays.stream(IndianState.values())

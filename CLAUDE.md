@@ -631,3 +631,76 @@ private Map<String, String> accountCombination;
 - accountCode resolved against Ledger's NATURAL_ACCOUNT FinanceDimension
   (same pattern PostingEngine uses internally)
 - GST/TDS flags filled from DimensionValue account master when caller omits them
+
+### AUTH-01 — auth schema is a third GL-service-owned schema (Rule 1 update)
+- Rule 1 ("GL service writes ONLY to gl.* and aie.*") predates AUTH-01. The `auth`
+  schema is now also owned and written to by this same Spring Boot service, following
+  the identical capability-based-schema pattern as `gl` and `aie`. Do NOT write to any
+  OTHER schema — the rule's spirit (write isolation to this service's own schemas) still
+  holds, only the schema list grew from 2 to 3.
+- `spring.flyway.schemas` and `spring.datasource.hikari` connect against `evyoog_gl` as
+  before — `auth` tables live in the same physical database, just a different schema,
+  same as `aie`.
+
+### AUTH-01 — @PreAuthorize is evaluated inside DispatcherServlet, not the filter chain
+- A denied `@PreAuthorize` throws `AccessDeniedException` from the method-security AOP
+  interceptor DURING controller invocation (inside `DispatcherServlet.doDispatch()`).
+  Spring MVC's own `@RestControllerAdvice` (`GlobalExceptionHandler`) gets first chance
+  at that exception via `@ExceptionHandler(Exception.class)`, so it is caught there —
+  it NEVER reaches `SecurityConfig`'s `accessDeniedHandler`, which only sees exceptions
+  thrown by the filter chain itself (before dispatch, e.g. authentication failures from
+  `.anyRequest().authenticated()`).
+- `GlobalExceptionHandler` therefore has explicit `@ExceptionHandler(AccessDeniedException.class)`
+  (→ 403 ACCESS_DENIED) and `@ExceptionHandler(AuthenticationException.class)` handlers.
+  `SecurityConfig`'s `authenticationEntryPoint`/`accessDeniedHandler` remain for the
+  filter-chain-level 401 path (missing/invalid bearer token, thrown before MVC dispatch
+  ever starts) — that path is NOT touched by `GlobalExceptionHandler`.
+
+### AUTH-01 — SYS_ADMIN bootstrap password via pgcrypto
+- `crypt('Admin@eVyoog1', gen_salt('bf', 12))` (pgcrypto, already enabled by V1 baseline)
+  produces a standard `$2a$` bcrypt hash that Spring Security's `BCryptPasswordEncoder`
+  verifies directly — no Java-side hash generation or `@PostConstruct` seeding needed.
+  Confirmed working via live login smoke test.
+
+### AUTH-01 — seeded SYS_ADMIN has no Legal Entity / role assignment
+- `auth.user_roles.legal_entity_id` is `NOT NULL` with an FK to `gl.legal_entity`, and no
+  legal entities exist at V23 migration time — so the seed migration creates the
+  `admin@evyoog.com` row but assigns it NO role. Logging in as the seeded admin before
+  any Legal Entity + role assignment exists correctly returns 400 `NO_LE_ASSIGNED`, not
+  a working session. An operator (or another already-privileged flow) must call
+  `POST /api/v1/auth/users/{id}/roles` to grant SYS_ADMIN a Legal Entity-scoped role
+  before it can log in.
+
+### AUTH-01 — permission catalog extends beyond the original spec's seed list
+- The original AUTH-01 spec's permission seed only covered journal/reporting/COA/period/
+  recurring/aie/gst/tds/audit/users/roles. Endpoints for enterprise setup (business
+  group/legal entity/business unit/inventory org/sub-inventory/consumption context),
+  ledger management, finance dimensions, account balance, setup wizard, and approval
+  policy configuration needed new permission codes, added in the same V23 migration:
+  `gl:enterprise:{view,manage}`, `gl:ledger:{view,manage}`, `gl:dimension:{view,manage}`,
+  `gl:balance:{view,manage}`, `gl:wizard:{run,view}`, `gl:approval-policy:{view,manage}`.
+  `GL_VIEWER`/`GL_AUDITOR` pick these up automatically (seeded by `action` matching, not
+  an explicit code list) — only `GL_MANAGER`/`GL_ACCOUNTANT`'s explicit code lists needed
+  extending. AccountingCalendar/AccountingPeriod/PeriodStatus all reuse the existing
+  `gl:period:{view,manage}` codes rather than getting their own — they're one epic.
+
+### AUTH-01 — IT suite: one MockMvc customizer, one merged IT class
+- All ~25 pre-AUTH-01 IT files predate authentication and never set an Authorization
+  header. Rather than touch every one of them, `src/test/java/com/evyoog/gl/testsupport/
+  TestJwtMockMvcCustomizer` implements `MockMvcBuilderCustomizer` (auto-discovered by
+  Spring Boot's component scan since it's in the `com.evyoog.gl` tree, even though it
+  lives under `src/test/java`) and calls `builder.defaultRequest(...)` with a superuser
+  JWT holding every permission in `auth.permissions`. Per-request headers set explicitly
+  in a test override the default (`ConfigurableMockMvcBuilder#defaultRequest` javadoc:
+  "properties specified at the time of performing a request override the default
+  properties"), so AUTH-specific tests can still exercise 401/403 by supplying their own
+  (invalid, or a real lower-privilege user's) Authorization header.
+- Do NOT declare a shared `@Container static PostgreSQLContainer` field in an abstract
+  base class extended by multiple IT test classes. Testcontainers' JUnit5 extension stops
+  static `@Container` fields in that OWNING class's `afterAll` — since Java static fields
+  declared in a superclass are one shared object, the FIRST subclass to finish its tests
+  kills the container for every sibling subclass still to run, and every later IT class
+  fails with Hikari "Connection is not available" (pool literally never connects again).
+  This is why all AUTH-01 IT coverage lives in one self-contained class,
+  `auth/api/AuthControllerIT`, each owning its full Testcontainers lifecycle exactly like
+  every other IT file in the repo — not a shared abstract base.

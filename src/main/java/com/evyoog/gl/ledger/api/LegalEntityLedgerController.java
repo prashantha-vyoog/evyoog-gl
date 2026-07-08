@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +34,7 @@ public class LegalEntityLedgerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:ledger:manage')")
     @Operation(summary = "Assign a ledger to a legal entity (enforces one-PRIMARY and Thin ES mode rules)")
     public ApiResponse<LegalEntityLedgerResponse> create(
             @Valid @RequestBody CreateLegalEntityLedgerRequest request,
@@ -41,12 +43,14 @@ public class LegalEntityLedgerController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:ledger:view')")
     @Operation(summary = "Get a legal entity - ledger assignment by id")
     public ApiResponse<LegalEntityLedgerResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:ledger:view')")
     @Operation(summary = "List legal entity - ledger assignments, filtered by legal entity or ledger")
     public ApiResponse<List<LegalEntityLedgerResponse>> list(
             @RequestParam(required = false) UUID legalEntityId,
@@ -55,6 +59,7 @@ public class LegalEntityLedgerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:ledger:manage')")
     @Operation(summary = "Soft-delete a legal entity - ledger assignment (isActive = false)")
     public ApiResponse<Void> deactivate(
             @PathVariable UUID id,

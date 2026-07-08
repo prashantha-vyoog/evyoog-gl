@@ -14,7 +14,19 @@
       "Bash(disown)",
       "Bash(mvn -q test -Dtest=BalanceSheetServiceTest)",
       "Bash(awk -F'[, ]+' '{run+=$3; fail+=$5; err+=$7} END{print \"Total run:\", run, \"Failures:\", fail, \"Errors:\", err}')",
-      "Bash(kill 65669 65723)"
+      "Bash(kill 65669 65723)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Read(//home/codespace/.m2/repository/org/springframework/boot/**)",
+      "Read(//home/codespace/.m2/repository/org/springframework/security/**)",
+      "Read(//home/codespace/.m2/repository/io/**)",
+      "Bash(javap -classpath /home/codespace/.m2/repository/org/springframework/boot/spring-boot-webmvc-test/4.0.7/spring-boot-webmvc-test-4.0.7.jar org.springframework.boot.webmvc.test.autoconfigure.MockMvcBuilderCustomizer)",
+      "Bash(grep -n \"hashToken\\\\|DigestUtils\\\\|sha256\" -r /workspaces/evyoog-gl/src/main/java 2>/dev/null; find ~/.m2/repository/org/apache/commons/commons-codec -maxdepth 1 2>/dev/null)",
+      "Read(//home/codespace/.m2/repository/org/apache/commons/**)",
+      "Bash(mkdir -p /tmp/mockmvc-decomp)",
+      "Bash(unzip -o -q /home/codespace/.m2/repository/org/springframework/boot/spring-boot-webmvc-test/4.0.7/spring-boot-webmvc-test-4.0.7.jar org/springframework/boot/webmvc/test/autoconfigure/*.class -d .)",
+      "Bash(javap -p -c org/springframework/boot/webmvc/test/autoconfigure/MockMvcAutoConfiguration.class)",
+      "Bash(javap -p org/springframework/boot/webmvc/test/autoconfigure/MockMvcAutoConfiguration.class)"
     ]
   }
 }

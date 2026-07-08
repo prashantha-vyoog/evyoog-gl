@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +25,7 @@ public class AuditLogController {
     private final AuditLogQueryService service;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:audit:view')")
     @Operation(summary = "Search audit log entries, optionally filtered by entity name and id")
     public ApiResponse<Page<AuditLogResponse>> search(
             @RequestParam(required = false) String entityName,

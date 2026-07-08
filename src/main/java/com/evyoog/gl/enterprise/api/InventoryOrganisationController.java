@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +33,7 @@ public class InventoryOrganisationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Create an inventory organisation (optional under Thin ES)")
     public ApiResponse<InventoryOrganisationResponse> create(
             @Valid @RequestBody CreateInventoryOrganisationRequest request,
@@ -40,12 +42,14 @@ public class InventoryOrganisationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "Get an inventory organisation by id")
     public ApiResponse<InventoryOrganisationResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "List inventory organisations, optionally filtered by business unit")
     public ApiResponse<List<InventoryOrganisationResponse>> list(
             @RequestParam(required = false) UUID businessUnitId) {

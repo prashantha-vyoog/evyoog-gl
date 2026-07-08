@@ -6,6 +6,7 @@ import com.evyoog.gl.reporting.balancesheet.service.BalanceSheetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ public class BalanceSheetController {
     private final BalanceSheetService balanceSheetService;
 
     @GetMapping("/api/v1/gl/reports/balance-sheet")
+    @PreAuthorize("hasAuthority('gl:balance-sheet:view')")
     @Operation(summary = "Generate the Balance Sheet for a Legal Entity and Period")
     public ApiResponse<BalanceSheetResponse> getBalanceSheet(
             @RequestParam UUID legalEntityId,
@@ -28,6 +30,7 @@ public class BalanceSheetController {
     }
 
     @GetMapping("/api/v1/gl/reports/balance-sheet/export")
+    @PreAuthorize("hasAuthority('gl:balance-sheet:export')")
     @Operation(summary = "Export the Balance Sheet (Phase 1: JSON only — PDF/EXCEL generation is Phase 2)")
     public ApiResponse<BalanceSheetResponse> exportBalanceSheet(
             @RequestParam UUID legalEntityId,

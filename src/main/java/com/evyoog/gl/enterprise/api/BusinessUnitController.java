@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,7 @@ public class BusinessUnitController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Create a business unit (validates GSTIN format)")
     public ApiResponse<BusinessUnitResponse> create(
             @Valid @RequestBody CreateBusinessUnitRequest request,
@@ -42,12 +44,14 @@ public class BusinessUnitController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "Get a business unit by id")
     public ApiResponse<BusinessUnitResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "List business units, optionally filtered by legal entity")
     public ApiResponse<List<BusinessUnitResponse>> list(
             @RequestParam(required = false) UUID legalEntityId) {
@@ -55,6 +59,7 @@ public class BusinessUnitController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Update mutable fields of a business unit")
     public ApiResponse<BusinessUnitResponse> update(
             @PathVariable UUID id,

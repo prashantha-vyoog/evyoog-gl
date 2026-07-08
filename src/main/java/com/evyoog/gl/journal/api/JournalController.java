@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +38,7 @@ public class JournalController {
 
     @PostMapping("/api/v1/gl/journals")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:journal:create')")
     @Operation(summary = "Create a journal — posts immediately unless its source requires approval")
     public ApiResponse<JournalResponse> create(
             @Valid @RequestBody CreateJournalRequest request,
@@ -45,12 +47,14 @@ public class JournalController {
     }
 
     @GetMapping("/api/v1/gl/journals/{id}")
+    @PreAuthorize("hasAuthority('gl:journal:view')")
     @Operation(summary = "Get a journal by id, with full line details")
     public ApiResponse<JournalResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.findById(id));
     }
 
     @GetMapping("/api/v1/gl/journals")
+    @PreAuthorize("hasAuthority('gl:journal:view')")
     @Operation(summary = "List journals, filterable by legal entity, status, period, source, and gl date range")
     public ApiResponse<Page<JournalSummaryResponse>> list(
             @RequestParam UUID legalEntityId,
@@ -64,6 +68,7 @@ public class JournalController {
     }
 
     @PatchMapping("/api/v1/gl/journals/{id}")
+    @PreAuthorize("hasAuthority('gl:journal:edit')")
     @Operation(summary = "Update description/notes on a DRAFT journal")
     public ApiResponse<JournalResponse> update(
             @PathVariable UUID id,
@@ -73,6 +78,7 @@ public class JournalController {
     }
 
     @PostMapping("/api/v1/gl/journals/{id}/submit")
+    @PreAuthorize("hasAuthority('gl:journal:submit')")
     @Operation(summary = "Submit a DRAFT journal — posts directly, or moves to PENDING_APPROVAL if its source requires approval")
     public ApiResponse<JournalResponse> submit(
             @PathVariable UUID id,
@@ -81,6 +87,7 @@ public class JournalController {
     }
 
     @PostMapping("/api/v1/gl/journals/{id}/post")
+    @PreAuthorize("hasAuthority('gl:journal:approve')")
     @Operation(summary = "Post an APPROVED journal")
     public ApiResponse<JournalResponse> post(
             @PathVariable UUID id,
@@ -89,6 +96,7 @@ public class JournalController {
     }
 
     @PostMapping("/api/v1/gl/journals/{id}/cancel")
+    @PreAuthorize("hasAuthority('gl:journal:edit')")
     @Operation(summary = "Cancel a DRAFT or PENDING_APPROVAL journal")
     public ApiResponse<JournalResponse> cancel(
             @PathVariable UUID id,

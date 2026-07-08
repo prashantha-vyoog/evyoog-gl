@@ -6,6 +6,7 @@ import com.evyoog.gl.reporting.trialbalance.service.TrialBalanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ public class TrialBalanceController {
     private final TrialBalanceService trialBalanceService;
 
     @GetMapping("/api/v1/gl/reports/trial-balance")
+    @PreAuthorize("hasAuthority('gl:trial-balance:view')")
     @Operation(summary = "Generate the Trial Balance for a Legal Entity and Period")
     public ApiResponse<TrialBalanceResponse> getTrialBalance(
             @RequestParam UUID legalEntityId,
@@ -28,6 +30,7 @@ public class TrialBalanceController {
     }
 
     @GetMapping("/api/v1/gl/reports/trial-balance/export")
+    @PreAuthorize("hasAuthority('gl:trial-balance:export')")
     @Operation(summary = "Export the Trial Balance (Phase 1: JSON only — PDF/EXCEL generation is Phase 2)")
     public ApiResponse<TrialBalanceResponse> exportTrialBalance(
             @RequestParam UUID legalEntityId,

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +37,7 @@ public class FinanceDimensionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:dimension:manage')")
     @Operation(summary = "Create a finance dimension")
     public ApiResponse<FinanceDimensionResponse> create(
             @Valid @RequestBody CreateFinanceDimensionRequest request,
@@ -44,12 +46,14 @@ public class FinanceDimensionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:dimension:view')")
     @Operation(summary = "Get a finance dimension by id")
     public ApiResponse<FinanceDimensionResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:dimension:view')")
     @Operation(summary = "List finance dimensions, optionally filtered by ledger and dimension type")
     public ApiResponse<List<FinanceDimensionResponse>> list(
             @RequestParam(required = false) UUID ledgerId,
@@ -58,6 +62,7 @@ public class FinanceDimensionController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:dimension:manage')")
     @Operation(summary = "Update mutable fields of a finance dimension")
     public ApiResponse<FinanceDimensionResponse> update(
             @PathVariable UUID id,
@@ -67,6 +72,7 @@ public class FinanceDimensionController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:dimension:manage')")
     @Operation(summary = "Soft-delete a finance dimension (isActive = false)")
     public ApiResponse<Void> deactivate(
             @PathVariable UUID id,

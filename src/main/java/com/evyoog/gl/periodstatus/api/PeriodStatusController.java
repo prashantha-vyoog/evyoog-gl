@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,7 @@ public class PeriodStatusController {
 
     @PostMapping("/api/v1/gl/period-status")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Initialise period status to NOT_OPENED for a Legal Entity and Period")
     public ApiResponse<PeriodStatusResponse> create(
             @Valid @RequestBody CreatePeriodStatusRequest request,
@@ -39,12 +41,14 @@ public class PeriodStatusController {
     }
 
     @GetMapping("/api/v1/gl/period-status/{id}")
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "Get a period status row by id")
     public ApiResponse<PeriodStatusResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping("/api/v1/gl/period-status")
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "List period status rows for a Legal Entity, optionally filtered by period or status")
     public ApiResponse<List<PeriodStatusResponse>> list(
             @RequestParam UUID legalEntityId,
@@ -54,6 +58,7 @@ public class PeriodStatusController {
     }
 
     @PostMapping("/api/v1/gl/period-status/{id}/open")
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Transition a period to OPEN")
     public ApiResponse<PeriodStatusResponse> open(
             @PathVariable UUID id,
@@ -62,6 +67,7 @@ public class PeriodStatusController {
     }
 
     @PostMapping("/api/v1/gl/period-status/{id}/future-enterable")
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Transition a period to FUTURE_ENTERABLE — THICK mode only")
     public ApiResponse<PeriodStatusResponse> futureEnterable(
             @PathVariable UUID id,
@@ -70,6 +76,7 @@ public class PeriodStatusController {
     }
 
     @PostMapping("/api/v1/gl/period-status/{id}/close")
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Transition a period to CLOSED")
     public ApiResponse<PeriodStatusResponse> close(
             @PathVariable UUID id,
@@ -78,6 +85,7 @@ public class PeriodStatusController {
     }
 
     @PostMapping("/api/v1/gl/period-status/{id}/lock")
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Transition a period to LOCKED — permanent, THICK mode only")
     public ApiResponse<PeriodStatusResponse> lock(
             @PathVariable UUID id,

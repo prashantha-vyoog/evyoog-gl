@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +29,7 @@ public class ApprovalController {
     private final ApprovalService approvalService;
 
     @PostMapping("/api/v1/gl/journals/{id}/approve")
+    @PreAuthorize("hasAuthority('gl:journal:approve')")
     @Operation(summary = "Approve a PENDING_APPROVAL journal — posts it immediately")
     public ApiResponse<ApprovalResponse> approve(
             @PathVariable UUID id,
@@ -36,6 +38,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/api/v1/gl/journals/{id}/reject")
+    @PreAuthorize("hasAuthority('gl:journal:approve')")
     @Operation(summary = "Reject a PENDING_APPROVAL journal — returns it to DRAFT")
     public ApiResponse<ApprovalResponse> reject(
             @PathVariable UUID id,
@@ -44,6 +47,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/api/v1/gl/journals/{id}/recall")
+    @PreAuthorize("hasAuthority('gl:journal:submit')")
     @Operation(summary = "Recall a PENDING_APPROVAL journal — returns it to DRAFT")
     public ApiResponse<ApprovalResponse> recall(
             @PathVariable UUID id,
@@ -52,12 +56,14 @@ public class ApprovalController {
     }
 
     @GetMapping("/api/v1/gl/journals/{id}/approval-history")
+    @PreAuthorize("hasAuthority('gl:journal:view')")
     @Operation(summary = "Full chronological approval audit trail for a journal")
     public ApiResponse<List<JournalApprovalLogResponse>> getApprovalHistory(@PathVariable UUID id) {
         return ApiResponse.ok(approvalService.getApprovalHistory(id));
     }
 
     @GetMapping("/api/v1/gl/approvals/pending")
+    @PreAuthorize("hasAuthority('gl:journal:approve')")
     @Operation(summary = "Pending approval queue for a Legal Entity")
     public ApiResponse<List<JournalSummaryResponse>> getPendingApprovals(@RequestParam UUID legalEntityId) {
         return ApiResponse.ok(approvalService.getPendingApprovals(legalEntityId));

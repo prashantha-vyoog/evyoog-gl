@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -34,6 +35,7 @@ public class AccountingCalendarController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Create the Accounting Calendar for a Ledger and auto-generate its initial fiscal year periods")
     public ApiResponse<AccountingCalendarResponse> create(
             @Valid @RequestBody CreateCalendarRequest request,
@@ -42,18 +44,21 @@ public class AccountingCalendarController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "Get an Accounting Calendar by id")
     public ApiResponse<AccountingCalendarResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:period:view')")
     @Operation(summary = "Get the Accounting Calendar for a Ledger, if one exists")
     public ApiResponse<AccountingCalendarResponse> getByLedgerId(@RequestParam UUID ledgerId) {
         return ApiResponse.ok(service.getByLedgerId(ledgerId).orElse(null));
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Update the Calendar's name/description (fiscal start cannot change after periods exist)")
     public ApiResponse<AccountingCalendarResponse> update(
             @PathVariable UUID id,
@@ -63,6 +68,7 @@ public class AccountingCalendarController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:period:manage')")
     @Operation(summary = "Soft-delete an Accounting Calendar (rejected once its periods have been generated)")
     public ApiResponse<Void> deactivate(
             @PathVariable UUID id,

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +33,7 @@ public class SubInventoryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('gl:enterprise:manage')")
     @Operation(summary = "Create a sub-inventory")
     public ApiResponse<SubInventoryResponse> create(
             @Valid @RequestBody CreateSubInventoryRequest request,
@@ -40,12 +42,14 @@ public class SubInventoryController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "Get a sub-inventory by id")
     public ApiResponse<SubInventoryResponse> getById(@PathVariable UUID id) {
         return ApiResponse.ok(service.getById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('gl:enterprise:view')")
     @Operation(summary = "List sub-inventories, optionally filtered by inventory organisation")
     public ApiResponse<List<SubInventoryResponse>> list(
             @RequestParam(required = false) UUID inventoryOrganisationId) {
