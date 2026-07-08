@@ -662,14 +662,26 @@ private Map<String, String> accountCombination;
   verifies directly — no Java-side hash generation or `@PostConstruct` seeding needed.
   Confirmed working via live login smoke test.
 
-### AUTH-01 — seeded SYS_ADMIN has no Legal Entity / role assignment
+### AUTH-01 — seeded SYS_ADMIN has no Legal Entity / role assignment (manual bootstrap required)
 - `auth.user_roles.legal_entity_id` is `NOT NULL` with an FK to `gl.legal_entity`, and no
   legal entities exist at V23 migration time — so the seed migration creates the
   `admin@evyoog.com` row but assigns it NO role. Logging in as the seeded admin before
   any Legal Entity + role assignment exists correctly returns 400 `NO_LE_ASSIGNED`, not
-  a working session. An operator (or another already-privileged flow) must call
-  `POST /api/v1/auth/users/{id}/roles` to grant SYS_ADMIN a Legal Entity-scoped role
-  before it can log in.
+  a working session. This is by design, not a bug — confirmed via live smoke test.
+- This is a genuine cold-start bootstrap problem, not just a missing convenience step:
+  every endpoint is now `@PreAuthorize`-gated, including enterprise setup
+  (`gl:enterprise:manage` on `POST /api/v1/gl/legal-entities`) and user/role management
+  (`gl:users:edit` on `POST /api/v1/auth/users/{id}/roles`). There is no bootstrap token,
+  so on a brand-new database NEITHER of those endpoints is callable yet — calling the API
+  to fix this is circular.
+- The only way to bring up a fresh environment: after the first `gl.legal_entity` row
+  exists (either it predates AUTH-01, e.g. an already-provisioned dev/test database, or
+  someone inserts one directly via SQL), manually `INSERT INTO auth.user_roles
+  (user_id, role_id, legal_entity_id, assigned_by) SELECT u.id, r.id, '<legal_entity_id>',
+  'SYSTEM' FROM auth.users u, auth.roles r WHERE u.email = 'admin@evyoog.com' AND
+  r.code = 'SYS_ADMIN';` directly against the database. After that one manual row, admin
+  can log in and use the API (including `POST /api/v1/auth/users/{id}/roles`) normally
+  for every subsequent user/role assignment.
 
 ### AUTH-01 — permission catalog extends beyond the original spec's seed list
 - The original AUTH-01 spec's permission seed only covered journal/reporting/COA/period/
