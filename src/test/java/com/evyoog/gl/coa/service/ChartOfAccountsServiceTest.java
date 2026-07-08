@@ -193,7 +193,7 @@ class ChartOfAccountsServiceTest {
         FinanceDimension fd = naturalAccountDimension(ledgerId);
         CreateAccountRequest request = new CreateAccountRequest(ledgerId, "1000", "Assets", null, null,
                 AccountQualifier.ASSET, true, true, null, null, null, null, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null);
 
         when(financeDimensionRepository.findByLedgerIdAndDimensionTypeAndIsActiveTrue(ledgerId, DimensionType.NATURAL_ACCOUNT))
                 .thenReturn(Optional.of(fd));
@@ -259,6 +259,6 @@ class ChartOfAccountsServiceTest {
         return new DimensionValueResponse(UUID.randomUUID(), fd.getId(), fd.getCode(), fd.getName(),
                 fd.getDimensionType(), code, name, null, null, null, null, AccountQualifier.ASSET,
                 isSummary != null && isSummary, isPostable != null && isPostable, null, false, false, null, 0,
-                true, null, null, null, null, null, null, null, false, null, null);
+                true, null, null, null, null, null, null, null, false, null, null, null);
     }
 }

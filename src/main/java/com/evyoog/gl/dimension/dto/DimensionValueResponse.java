@@ -6,6 +6,7 @@ import com.evyoog.gl.dimension.domain.NormalBalance;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 public record DimensionValueResponse(
@@ -37,6 +38,7 @@ public record DimensionValueResponse(
         LocalDate validFrom,
         LocalDate validTo,
         boolean budgetControlled,
+        Map<String, Object> extendedAttributes,
         Instant createdAt,
         Instant updatedAt
 ) {

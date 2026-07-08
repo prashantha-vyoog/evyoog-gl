@@ -113,7 +113,8 @@ public class ChartOfAccountsService {
                 request.normalBalance(), request.gstApplicable(), request.tdsApplicable(),
                 request.tdsSection(), request.displayOrder(),
                 request.counterpartyLegalEntityId(), request.ccManagerName(), request.ccManagerEmail(),
-                request.ccDepartment(), request.validFrom(), request.validTo(), request.budgetControlled());
+                request.ccDepartment(), request.validFrom(), request.validTo(), request.budgetControlled(),
+                request.extendedAttributes());
 
         DimensionValueResponse response = dimensionValueService.create(dvRequest, performedBy);
         return accountMapper.toResponse(response).withChildren(List.of());
@@ -172,7 +173,7 @@ public class ChartOfAccountsService {
             CreateDimensionValueRequest dvRequest = new CreateDimensionValueRequest(
                     dimension.getId(), code, name, null, parentId, qualifier, isSummary, isPostable,
                     null, gstApplicable, tdsApplicable, null, order,
-                    null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null);
 
             DimensionValueResponse response = dimensionValueService.create(dvRequest, performedBy);
             codeToId.put(code, response.id());

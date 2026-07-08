@@ -164,6 +164,7 @@ public class PostingEngine {
                 .financeModeSnapshot(mode)
                 .postedAt(Instant.now())
                 .postedBy(request.getPerformedBy())
+                .extendedAttributes(request.getExtendedAttributes())
                 .createdBy(request.getPerformedBy())
                 .updatedBy(request.getPerformedBy())
                 .build();
@@ -201,6 +202,7 @@ public class PostingEngine {
                     .gstType(lineRequest.getGstType())
                     .tdsApplicable(Boolean.TRUE.equals(lineRequest.getTdsApplicable()))
                     .tdsSection(lineRequest.getTdsSection())
+                    .extendedAttributes(lineRequest.getExtendedAttributes())
                     .build());
         }
         return lines;

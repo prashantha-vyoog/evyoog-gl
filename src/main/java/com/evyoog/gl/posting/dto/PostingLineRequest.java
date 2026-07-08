@@ -32,4 +32,5 @@ public class PostingLineRequest {
     private String gstType;
     private Boolean tdsApplicable;
     private String tdsSection;
+    private Map<String, Object> extendedAttributes;
 }

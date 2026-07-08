@@ -27,6 +27,8 @@ public record CreateJournalLineRequest(
 
         Boolean tdsApplicable,
 
-        String tdsSection
+        String tdsSection,
+
+        Map<String, Object> extendedAttributes
 ) {
 }

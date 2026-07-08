@@ -81,6 +81,10 @@ public class JournalLine {
     @Column(name = "tds_section", length = 10)
     private String tdsSection;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extended_attributes", columnDefinition = "jsonb")
+    private Map<String, Object> extendedAttributes;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

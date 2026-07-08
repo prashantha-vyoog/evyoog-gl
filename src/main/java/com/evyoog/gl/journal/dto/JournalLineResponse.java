@@ -18,6 +18,7 @@ public record JournalLineResponse(
         Boolean gstApplicable,
         String gstType,
         Boolean tdsApplicable,
-        String tdsSection
+        String tdsSection,
+        Map<String, Object> extendedAttributes
 ) {
 }

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 public record CreateDimensionValueRequest(
@@ -60,6 +61,8 @@ public record CreateDimensionValueRequest(
         LocalDate validTo,
 
         // Budget control — Phase 1 stored, Phase 2 enforced
-        Boolean budgetControlled
+        Boolean budgetControlled,
+
+        Map<String, Object> extendedAttributes
 ) {
 }

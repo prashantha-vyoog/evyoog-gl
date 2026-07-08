@@ -16,8 +16,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @Entity
 @Table(name = "dimension_value", schema = "gl")
@@ -97,4 +100,8 @@ public class DimensionValue extends AuditableEntity {
     // Budget control — Phase 1 stored, Phase 2 enforced by the Posting Engine
     @Column(name = "budget_controlled", nullable = false)
     private boolean budgetControlled;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extended_attributes", columnDefinition = "jsonb")
+    private Map<String, Object> extendedAttributes;
 }

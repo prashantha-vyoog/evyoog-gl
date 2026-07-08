@@ -72,13 +72,14 @@ class DimensionValueServiceTest {
                 entity.getDescription(), null, null, null, entity.getAccountQualifier(), entity.isSummary(),
                 entity.isPostable(), entity.getNormalBalance(), entity.isGstApplicable(), entity.isTdsApplicable(),
                 entity.getTdsSection(), entity.getDisplayOrder(), entity.isActive(), null, null, null, null, null,
-                entity.getValidFrom(), entity.getValidTo(), entity.isBudgetControlled(), Instant.now(), Instant.now());
+                entity.getValidFrom(), entity.getValidTo(), entity.isBudgetControlled(), entity.getExtendedAttributes(),
+                Instant.now(), Instant.now());
     }
 
     private CreateDimensionValueRequest basicRequest(UUID financeDimensionId, String code, String name,
                                                        UUID parentValueId, AccountQualifier qualifier) {
         return new CreateDimensionValueRequest(financeDimensionId, code, name, null, parentValueId, qualifier,
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -214,7 +215,7 @@ class DimensionValueServiceTest {
 
         CreateDimensionValueRequest request = new CreateDimensionValueRequest(fd.getId(), "IC-001", "Intercompany 1",
                 null, null, null, null, null, null, null, null, null, null, counterparty.getId(), null, null, null,
-                null, null, null);
+                null, null, null, null);
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
         when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "IC-001")).thenReturn(false);
@@ -231,7 +232,7 @@ class DimensionValueServiceTest {
         FinanceDimension fd = financeDimension(DimensionType.COST_CENTRE);
         CreateDimensionValueRequest request = new CreateDimensionValueRequest(fd.getId(), "CC-001", "Cost Centre 1",
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 1, 1), null);
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 1, 1), null, null);
 
         when(financeDimensionRepository.findById(fd.getId())).thenReturn(Optional.of(fd));
         when(repository.existsByFinanceDimensionIdAndCode(fd.getId(), "CC-001")).thenReturn(false);

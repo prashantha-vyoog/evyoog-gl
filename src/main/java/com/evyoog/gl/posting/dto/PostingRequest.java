@@ -37,6 +37,7 @@ public class PostingRequest {
     private List<PostingLineRequest> lines;
     private String performedBy;
     private String externalReference;
+    private Map<String, Object> extendedAttributes;
     // EVENT_ONLY mode payload
     private Map<String, Object> eventPayload;
     // DRAFT or straight to POSTED

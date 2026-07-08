@@ -24,13 +24,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -128,6 +131,10 @@ public class JournalHeader {
 
     @Column(name = "notes")
     private String notes;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extended_attributes", columnDefinition = "jsonb")
+    private Map<String, Object> extendedAttributes;
 
     @Builder.Default
     @OneToMany(mappedBy = "journalHeader", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

@@ -6,6 +6,7 @@ import com.evyoog.gl.dimension.domain.NormalBalance;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record AccountResponse(
@@ -31,6 +32,7 @@ public record AccountResponse(
         LocalDate validFrom,
         LocalDate validTo,
         Boolean budgetControlled,
+        Map<String, Object> extendedAttributes,
         Integer displayOrder,
         Boolean isActive,
         List<AccountResponse> children,
@@ -40,6 +42,7 @@ public record AccountResponse(
         return new AccountResponse(id, code, name, description, parentAccountId, parentAccountCode,
                 parentAccountName, qualifier, isSummary, isPostable, normalBalance, gstApplicable, tdsApplicable,
                 tdsSection, counterpartyLegalEntityId, counterpartyLegalEntityName, ccManagerName, ccManagerEmail,
-                ccDepartment, validFrom, validTo, budgetControlled, displayOrder, isActive, newChildren, createdAt);
+                ccDepartment, validFrom, validTo, budgetControlled, extendedAttributes, displayOrder, isActive,
+                newChildren, createdAt);
     }
 }

@@ -163,21 +163,21 @@ class JournalServiceTest {
                 h.getTotalDebit(), h.getTotalCredit(), h.getStatus(),
                 h.getFinanceModeSnapshot() != null ? h.getFinanceModeSnapshot().name() : null,
                 h.getPostedAt(), h.getPostedBy(), h.getIsReversal(), h.getExternalReference(), h.getNotes(),
-                List.of(), h.getCreatedAt(), h.getCreatedBy());
+                h.getExtendedAttributes(), List.of(), h.getCreatedAt(), h.getCreatedBy());
     }
 
     private CreateJournalRequest requestWithLines(UUID sourceId, LocalDate glDate, LocalDate accountingDate,
                                                     List<CreateJournalLineRequest> lines) {
         return new CreateJournalRequest(legalEntityId, sourceId, categoryId, "Test journal",
-                glDate, accountingDate, "INR", BigDecimal.ONE, null, null, lines);
+                glDate, accountingDate, "INR", BigDecimal.ONE, null, null, null, lines);
     }
 
     private List<CreateJournalLineRequest> balancedLines() {
         return List.of(
                 new CreateJournalLineRequest(Map.of(), account1Id, new BigDecimal("100.00"), null,
-                        "INR", null, false, null, false, null),
+                        "INR", null, false, null, false, null, null),
                 new CreateJournalLineRequest(Map.of(), account2Id, null, new BigDecimal("100.00"),
-                        "INR", null, false, null, false, null));
+                        "INR", null, false, null, false, null, null));
     }
 
     private JournalHeader headerWithStatus(JournalStatus status, JournalSource source) {
@@ -243,10 +243,57 @@ class JournalServiceTest {
     }
 
     @Test
+    void testCreate_approvalRequired_persistsExtendedAttributesOnHeaderAndLines() {
+        Map<String, Object> headerAttrs = Map.of("projectCode", "PRJ-42");
+        Map<String, Object> lineAttrs = Map.of("vehicleNumber", "TN01AB1234");
+
+        List<CreateJournalLineRequest> lines = List.of(
+                new CreateJournalLineRequest(Map.of(), account1Id, new BigDecimal("100.00"), null,
+                        "INR", null, false, null, false, null, lineAttrs),
+                new CreateJournalLineRequest(Map.of(), account2Id, null, new BigDecimal("100.00"),
+                        "INR", null, false, null, false, null, null));
+        CreateJournalRequest request = new CreateJournalRequest(legalEntityId, sourceIdApproval, categoryId,
+                "Test journal", LocalDate.of(2026, 4, 10), null, "INR", BigDecimal.ONE, null, null, headerAttrs, lines);
+
+        service.create(request, "tester");
+
+        ArgumentCaptor<JournalHeader> captor = ArgumentCaptor.forClass(JournalHeader.class);
+        verify(journalHeaderRepository).save(captor.capture());
+        JournalHeader saved = captor.getValue();
+        assertThat(saved.getExtendedAttributes()).isEqualTo(headerAttrs);
+        assertThat(saved.getLines().get(0).getExtendedAttributes()).isEqualTo(lineAttrs);
+        assertThat(saved.getLines().get(1).getExtendedAttributes()).isNull();
+    }
+
+    @Test
+    void testCreate_noApprovalRequired_passesExtendedAttributesToPostingEngine() {
+        UUID postedId = UUID.randomUUID();
+        when(postingEngine.post(any())).thenReturn(PostingResult.posted(postedId, "JE-2618-00001", FinanceMode.THICK));
+        when(journalHeaderRepository.findById(postedId)).thenReturn(Optional.of(headerWithStatus(JournalStatus.POSTED, noApprovalSource)));
+
+        Map<String, Object> headerAttrs = Map.of("projectCode", "PRJ-42");
+        List<CreateJournalLineRequest> lines = List.of(
+                new CreateJournalLineRequest(Map.of(), account1Id, new BigDecimal("100.00"), null,
+                        "INR", null, false, null, false, null, Map.of("vehicleNumber", "TN01AB1234")),
+                new CreateJournalLineRequest(Map.of(), account2Id, null, new BigDecimal("100.00"),
+                        "INR", null, false, null, false, null, null));
+        CreateJournalRequest request = new CreateJournalRequest(legalEntityId, sourceIdNoApproval, categoryId,
+                "Test journal", LocalDate.of(2026, 4, 10), null, "INR", BigDecimal.ONE, null, null, headerAttrs, lines);
+
+        service.create(request, "tester");
+
+        ArgumentCaptor<PostingRequest> captor = ArgumentCaptor.forClass(PostingRequest.class);
+        verify(postingEngine).post(captor.capture());
+        PostingRequest posted = captor.getValue();
+        assertThat(posted.getExtendedAttributes()).isEqualTo(headerAttrs);
+        assertThat(posted.getLines().get(0).getExtendedAttributes()).isEqualTo(Map.of("vehicleNumber", "TN01AB1234"));
+    }
+
+    @Test
     void testCreate_singleLine_throwsMINIMUM_TWO_LINES() {
         List<CreateJournalLineRequest> oneLine = List.of(
                 new CreateJournalLineRequest(Map.of(), account1Id, new BigDecimal("100.00"), null,
-                        "INR", null, false, null, false, null));
+                        "INR", null, false, null, false, null, null));
 
         assertThatThrownBy(() -> service.create(
                 requestWithLines(sourceIdNoApproval, LocalDate.now(), null, oneLine), "tester"))
@@ -258,9 +305,9 @@ class JournalServiceTest {
     void testCreate_bothDebitAndCredit_throwsINVALID_LINE_AMOUNTS() {
         List<CreateJournalLineRequest> lines = List.of(
                 new CreateJournalLineRequest(Map.of(), account1Id, new BigDecimal("100.00"), new BigDecimal("100.00"),
-                        "INR", null, false, null, false, null),
+                        "INR", null, false, null, false, null, null),
                 new CreateJournalLineRequest(Map.of(), account2Id, null, new BigDecimal("100.00"),
-                        "INR", null, false, null, false, null));
+                        "INR", null, false, null, false, null, null));
 
         assertThatThrownBy(() -> service.create(
                 requestWithLines(sourceIdNoApproval, LocalDate.now(), null, lines), "tester"))
@@ -272,9 +319,9 @@ class JournalServiceTest {
     void testCreate_neitherDebitNorCredit_throwsINVALID_LINE_AMOUNTS() {
         List<CreateJournalLineRequest> lines = List.of(
                 new CreateJournalLineRequest(Map.of(), account1Id, null, null,
-                        "INR", null, false, null, false, null),
+                        "INR", null, false, null, false, null, null),
                 new CreateJournalLineRequest(Map.of(), account2Id, null, new BigDecimal("100.00"),
-                        "INR", null, false, null, false, null));
+                        "INR", null, false, null, false, null, null));
 
         assertThatThrownBy(() -> service.create(
                 requestWithLines(sourceIdNoApproval, LocalDate.now(), null, lines), "tester"))

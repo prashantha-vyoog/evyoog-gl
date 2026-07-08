@@ -210,6 +210,7 @@ public class JournalService {
                 .financeModeSnapshot(ledger.getFinanceMode())
                 .externalReference(request.externalReference())
                 .notes(request.notes())
+                .extendedAttributes(request.extendedAttributes())
                 .createdBy(performedBy)
                 .updatedBy(performedBy)
                 .build();
@@ -244,6 +245,7 @@ public class JournalService {
                     .gstType(lineRequest.gstType())
                     .tdsApplicable(Boolean.TRUE.equals(lineRequest.tdsApplicable()))
                     .tdsSection(lineRequest.tdsSection())
+                    .extendedAttributes(lineRequest.extendedAttributes())
                     .build());
         }
         return lines;
@@ -263,6 +265,7 @@ public class JournalService {
                         .gstType(lr.gstType())
                         .tdsApplicable(lr.tdsApplicable())
                         .tdsSection(lr.tdsSection())
+                        .extendedAttributes(lr.extendedAttributes())
                         .build())
                 .toList();
 
@@ -279,6 +282,7 @@ public class JournalService {
                 .lines(lines)
                 .performedBy(performedBy)
                 .externalReference(request.externalReference())
+                .extendedAttributes(request.extendedAttributes())
                 .initialStatus(initialStatus)
                 .build();
     }
@@ -296,6 +300,7 @@ public class JournalService {
                         .gstType(line.getGstType())
                         .tdsApplicable(line.getTdsApplicable())
                         .tdsSection(line.getTdsSection())
+                        .extendedAttributes(line.getExtendedAttributes())
                         .build())
                 .toList();
 
@@ -312,6 +317,7 @@ public class JournalService {
                 .lines(lines)
                 .performedBy(performedBy)
                 .externalReference(journal.getExternalReference())
+                .extendedAttributes(journal.getExtendedAttributes())
                 .initialStatus(initialStatus)
                 .build();
     }

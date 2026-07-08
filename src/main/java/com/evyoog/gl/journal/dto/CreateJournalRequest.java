@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record CreateJournalRequest(
@@ -36,6 +37,8 @@ public record CreateJournalRequest(
         String externalReference,
 
         String notes,
+
+        Map<String, Object> extendedAttributes,
 
         @NotNull(message = "lines is required")
         @Size(min = 2, message = "A journal entry must have at least two lines")

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 public record CreateAccountRequest(
@@ -61,6 +62,8 @@ public record CreateAccountRequest(
         LocalDate validTo,
 
         // Budget control
-        Boolean budgetControlled
+        Boolean budgetControlled,
+
+        Map<String, Object> extendedAttributes
 ) {
 }

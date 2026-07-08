@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record JournalResponse(
@@ -39,6 +40,7 @@ public record JournalResponse(
         Boolean isReversal,
         String externalReference,
         String notes,
+        Map<String, Object> extendedAttributes,
         List<JournalLineResponse> lines,
         Instant createdAt,
         String createdBy
