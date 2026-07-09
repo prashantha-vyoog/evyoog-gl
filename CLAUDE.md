@@ -716,3 +716,10 @@ private Map<String, String> accountCombination;
   This is why all AUTH-01 IT coverage lives in one self-contained class,
   `auth/api/AuthControllerIT`, each owning its full Testcontainers lifecycle exactly like
   every other IT file in the repo — not a shared abstract base.
+
+### Codespaces deployment
+- Port 8080 must be set to Public visibility for React frontend to reach it
+- CORS allows: http://localhost:5173 and the Codespaces frontend public URL
+- SYS_ADMIN bootstrap: direct SQL INSERT into auth.user_roles — cannot use API
+- BCrypt password reset: use BCryptPasswordEncoder(12) via Claude Code + SQL UPDATE
+- Period endpoint: /api/v1/gl/period-status (not /api/v1/gl/periods)
