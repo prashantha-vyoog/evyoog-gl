@@ -119,5 +119,8 @@ echo "║  mvn spring-boot:run   → start API on port 8080          ║"
 echo "║  claude                → open Claude Code                ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
+npm install -g @anthropic-ai/claude-code
+echo "✓ Claude Code installed"
+echo ""
 echo "Ready. Start with GL-01 — paste GL-01_ClaudeCode_Build_Prompt.md into Claude Code."
 echo ""
