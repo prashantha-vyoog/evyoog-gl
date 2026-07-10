@@ -1,29 +1,25 @@
 {
   "name": "eVyoog GL Development",
-
   "image": "mcr.microsoft.com/devcontainers/universal:2",
-
   "forwardPorts": [8080, 5432],
   "portsAttributes": {
     "8080": {
       "label": "eVyoog GL API",
-      "onAutoForward": "notify"
+      "onAutoForward": "notify",
+      "visibility": "public"
     },
     "5432": {
       "label": "PostgreSQL",
       "onAutoForward": "silent"
     }
   },
-
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-
   "remoteEnv": {
     "SPRING_DATASOURCE_URL": "jdbc:postgresql://localhost:5432/evyoog_gl",
     "SPRING_DATASOURCE_USERNAME": "evyoog_app",
     "SPRING_DATASOURCE_PASSWORD": "evyoog_dev_pass",
     "SPRING_PROFILES_ACTIVE": "dev"
   },
-
   "customizations": {
     "vscode": {
       "extensions": [
