@@ -741,3 +741,23 @@ private Map<String, String> accountCombination;
 4. POST /api/v1/gl/setup-wizard/run → get legalEntityId
 5. INSERT INTO auth.user_roles for admin@evyoog.com + SYS_ADMIN
 6. ./scripts/seed-demo-data.sh <legalEntityId>
+
+### Demo data — Orbinox Valves India Pvt Ltd
+- Company: Orbinox Valves India Pvt Ltd (industrial valve manufacturer)
+- Legal Entity ID: d53c88e1-1bd0-4e68-999a-218c51b0069c
+- Ledger ID: 262b74d1-f6bf-472d-bdfb-3be5ade71968
+- Period: APR-2025 (OPEN) · FY 2025-26
+- 25 accounts: 1100-1800 (ASSET), 2100-2500 (LIABILITY), 3100-3200 (EQUITY),
+  4100-4300 (REVENUE), 5100-5700 (EXPENSE)
+- 10 journals posted: JE-2629-00001 through JE-2629-00010
+- Expected P&L: Revenue INR 1,00,00,000 · Expenses INR 45,00,000 · Profit INR 55,00,000
+
+### Post-rebuild bootstrap sequence
+1. docker rm -f evyoog-postgres && docker run -d --name evyoog-postgres
+   -e POSTGRES_DB=evyoog_gl -e POSTGRES_USER=evyoog_app
+   -e POSTGRES_PASSWORD=evyoog_dev_pass -p 5432:5432 postgres:16
+2. mvn spring-boot:run &
+3. Create consumption context via SQL (gen_random_uuid())
+4. POST /api/v1/gl/setup-wizard/run -> get legalEntityId
+5. INSERT INTO auth.user_roles for admin@evyoog.com + SYS_ADMIN
+6. ./scripts/seed-demo-data.sh <legalEntityId>
