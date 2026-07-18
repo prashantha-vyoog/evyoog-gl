@@ -76,69 +76,99 @@ if [[ -z "$ACCESS_TOKEN" ]]; then
 fi
 echo "  Logged in."
 
-echo "==> [1/8] Creating ledger for Legal Entity ${LEGAL_ENTITY_ID}"
-LEDGER_RESPONSE=$(api POST /api/v1/gl/ledgers "$(jq -n \
-    '{
-        code: "PRIM-01",
-        name: "Primary Ledger",
-        description: "Orbinox Valves India Pvt Ltd primary ledger",
-        financeMode: "THICK",
-        ledgerCategory: "PRIMARY",
-        functionalCurrency: "INR",
-        accountingStandard: "IND_AS"
-    }')")
-LEDGER_ID=$(jq -r '.data.id' <<<"$LEDGER_RESPONSE")
-echo "  Ledger created: ${LEDGER_ID}"
+echo "==> [1/8] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
+EXISTING_LEDGER_ID=$(api GET "/api/v1/gl/legal-entity-ledgers?legalEntityId=${LEGAL_ENTITY_ID}" \
+    | jq -r '.data[] | select(.ledgerCode == "PRIM-01") | .ledgerId' | head -n1)
 
-echo "==> [1/8] Linking ledger to Legal Entity"
-api POST /api/v1/gl/legal-entity-ledgers "$(jq -n \
-    --arg legalEntityId "$LEGAL_ENTITY_ID" \
-    --arg ledgerId "$LEDGER_ID" \
-    '{legalEntityId: $legalEntityId, ledgerId: $ledgerId, ledgerCategory: "PRIMARY"}')" >/dev/null
-echo "  Linked."
+if [[ -n "$EXISTING_LEDGER_ID" ]]; then
+    LEDGER_ID="$EXISTING_LEDGER_ID"
+    echo "  Ledger already linked: ${LEDGER_ID}"
+else
+    LEDGER_RESPONSE=$(api POST /api/v1/gl/ledgers "$(jq -n \
+        '{
+            code: "PRIM-01",
+            name: "Primary Ledger",
+            description: "Orbinox Valves India Pvt Ltd primary ledger",
+            financeMode: "THICK",
+            ledgerCategory: "PRIMARY",
+            functionalCurrency: "INR",
+            accountingStandard: "IND_AS"
+        }')")
+    LEDGER_ID=$(jq -r '.data.id' <<<"$LEDGER_RESPONSE")
+    echo "  Ledger created: ${LEDGER_ID}"
 
-echo "==> [2/8] Creating NATURAL_ACCOUNT Finance Dimension (prerequisite for Chart of Accounts)"
-api POST /api/v1/gl/finance-dimensions "$(jq -n \
-    --arg ledgerId "$LEDGER_ID" \
-    '{
-        ledgerId: $ledgerId,
-        code: "NAT-ACCT",
-        name: "Natural Account",
-        description: "Chart of Accounts dimension",
-        dimensionType: "NATURAL_ACCOUNT",
-        isRequired: true,
-        displayOrder: 1
-    }')" >/dev/null
-echo "  Finance dimension created."
+    echo "==> [1/8] Linking ledger to Legal Entity"
+    api POST /api/v1/gl/legal-entity-ledgers "$(jq -n \
+        --arg legalEntityId "$LEGAL_ENTITY_ID" \
+        --arg ledgerId "$LEDGER_ID" \
+        '{legalEntityId: $legalEntityId, ledgerId: $ledgerId, ledgerCategory: "PRIMARY"}')" >/dev/null
+    echo "  Linked."
+fi
 
-echo "==> [3/8] Creating accounting calendar (auto-generates FY 2025-26 periods)"
-CALENDAR_RESPONSE=$(api POST /api/v1/gl/accounting-calendars "$(jq -n \
-    --arg ledgerId "$LEDGER_ID" \
-    '{
-        ledgerId: $ledgerId,
-        name: "FY Calendar",
-        description: "Standard Indian fiscal calendar",
-        fiscalYearStartMonth: 4,
-        fiscalYearStartDay: 1,
-        periodType: "MONTHLY",
-        initialFiscalYear: 2025
-    }')")
-CALENDAR_ID=$(jq -r '.data.id' <<<"$CALENDAR_RESPONSE")
-GENERATED_COUNT=$(jq -r '.data.generatedPeriodCount' <<<"$CALENDAR_RESPONSE")
-echo "  Calendar created: ${CALENDAR_ID} (${GENERATED_COUNT} periods generated for FY 2025-26)"
+echo "==> [2/8] Checking for existing NATURAL_ACCOUNT Finance Dimension"
+EXISTING_DIMENSION=$(api GET "/api/v1/gl/finance-dimensions?ledgerId=${LEDGER_ID}&dimensionType=NATURAL_ACCOUNT" \
+    | jq -r '.data | length')
 
-echo "==> [4/8] Opening APR-2025 period for the Legal Entity"
+if [[ "$EXISTING_DIMENSION" -gt 0 ]]; then
+    echo "  NATURAL_ACCOUNT Finance Dimension already exists — skipping."
+else
+    api POST /api/v1/gl/finance-dimensions "$(jq -n \
+        --arg ledgerId "$LEDGER_ID" \
+        '{
+            ledgerId: $ledgerId,
+            code: "NAT-ACCT",
+            name: "Natural Account",
+            description: "Chart of Accounts dimension",
+            dimensionType: "NATURAL_ACCOUNT",
+            isRequired: true,
+            displayOrder: 1
+        }')" >/dev/null
+    echo "  Finance dimension created."
+fi
+
+echo "==> [3/8] Checking for existing accounting calendar"
+EXISTING_CALENDAR_ID=$(api GET "/api/v1/gl/accounting-calendars?ledgerId=${LEDGER_ID}" | jq -r '.data.id // empty')
+
+if [[ -n "$EXISTING_CALENDAR_ID" ]]; then
+    CALENDAR_ID="$EXISTING_CALENDAR_ID"
+    echo "  Calendar already exists: ${CALENDAR_ID}"
+else
+    CALENDAR_RESPONSE=$(api POST /api/v1/gl/accounting-calendars "$(jq -n \
+        --arg ledgerId "$LEDGER_ID" \
+        '{
+            ledgerId: $ledgerId,
+            name: "FY Calendar",
+            description: "Standard Indian fiscal calendar",
+            fiscalYearStartMonth: 4,
+            fiscalYearStartDay: 1,
+            periodType: "MONTHLY",
+            initialFiscalYear: 2025
+        }')")
+    CALENDAR_ID=$(jq -r '.data.id' <<<"$CALENDAR_RESPONSE")
+    GENERATED_COUNT=$(jq -r '.data.generatedPeriodCount' <<<"$CALENDAR_RESPONSE")
+    echo "  Calendar created: ${CALENDAR_ID} (${GENERATED_COUNT} periods generated for FY 2025-26)"
+fi
+
+echo "==> [4/8] Checking for existing APR-2025 period status"
 APR_2025_ID=$(api GET "/api/v1/gl/accounting-periods/find?calendarId=${CALENDAR_ID}&date=2025-04-15" | jq -r '.data.id')
 echo "  APR-2025 period id: ${APR_2025_ID}"
 
-PERIOD_STATUS_RESPONSE=$(api POST /api/v1/gl/period-status "$(jq -n \
-    --arg legalEntityId "$LEGAL_ENTITY_ID" \
-    --arg accountingPeriodId "$APR_2025_ID" \
-    '{legalEntityId: $legalEntityId, accountingPeriodId: $accountingPeriodId}')")
-PERIOD_STATUS_ID=$(jq -r '.data.id' <<<"$PERIOD_STATUS_RESPONSE")
+EXISTING_PERIOD_STATUS_ID=$(api GET "/api/v1/gl/period-status?legalEntityId=${LEGAL_ENTITY_ID}" \
+    | jq -r '.data[] | select(.periodName == "APR-2025") | .id' | head -n1)
 
-api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/open" >/dev/null
-echo "  APR-2025 period opened."
+if [[ -n "$EXISTING_PERIOD_STATUS_ID" ]]; then
+    PERIOD_STATUS_ID="$EXISTING_PERIOD_STATUS_ID"
+    echo "  APR-2025 period status already exists: ${PERIOD_STATUS_ID} — skipping create/open."
+else
+    PERIOD_STATUS_RESPONSE=$(api POST /api/v1/gl/period-status "$(jq -n \
+        --arg legalEntityId "$LEGAL_ENTITY_ID" \
+        --arg accountingPeriodId "$APR_2025_ID" \
+        '{legalEntityId: $legalEntityId, accountingPeriodId: $accountingPeriodId}')")
+    PERIOD_STATUS_ID=$(jq -r '.data.id' <<<"$PERIOD_STATUS_RESPONSE")
+
+    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/open" >/dev/null
+    echo "  APR-2025 period opened."
+fi
 
 echo "==> [5/8] Fetching MANUAL journal source and ACCRUAL journal category ids"
 MANUAL_SOURCE_ID=$(api GET /api/v1/gl/journal-sources | jq -r '.data[] | select(.code=="MANUAL") | .id')
