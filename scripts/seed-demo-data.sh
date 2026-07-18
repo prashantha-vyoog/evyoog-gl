@@ -241,8 +241,14 @@ done
 
 echo "==> [7/8] Posting journal entries"
 
-EXISTING_POSTED=$(api GET "/api/v1/gl/journals?legalEntityId=${LEGAL_ENTITY_ID}&status=POSTED&fromDate=2025-04-01&toDate=2025-04-30&size=50" \
-    | jq -r '.data.content | length')
+JOURNALS_RESPONSE=$(api GET "/api/v1/gl/journals?legalEntityId=${LEGAL_ENTITY_ID}&status=POSTED&size=50")
+EXISTING_POSTED=$(jq '.data.content | length' <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "0")
+if [[ "$EXISTING_POSTED" == "null" || -z "$EXISTING_POSTED" ]]; then
+    EXISTING_POSTED=$(jq '.data | length' <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "0")
+fi
+if [[ "$EXISTING_POSTED" == "null" || -z "$EXISTING_POSTED" ]]; then
+    EXISTING_POSTED=0
+fi
 
 # description|glDate|drCode|drAmount|crCode|crAmount
 JOURNALS=(
