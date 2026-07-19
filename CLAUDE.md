@@ -717,6 +717,29 @@ private Map<String, String> accountCombination;
   `auth/api/AuthControllerIT`, each owning its full Testcontainers lifecycle exactly like
   every other IT file in the repo — not a shared abstract base.
 
+### GL-20 — SlaEventLog reality is far simpler than any future spec will assume (CRITICAL)
+- `aie.sla_event_log` (V9 baseline) has only: `id`, `ledger_id`, `legal_entity_id`,
+  `accounting_period_id`, `event_payload` (JSONB `Map<String,Object>`), `status`
+  (defaults `'EMITTED'`), `created_at`. There is NO `batch_id`, NO `journal_header_id`,
+  and NO `event_type` column — do not assume any future spec's field list without
+  re-inspecting the entity first. `PostingEngine.emitEvent()` (GL-15) is still the only
+  writer, for EVENT_ONLY-mode `PostingRequest.eventPayload`.
+- GL-20's REST surface was adapted to the real columns:
+  `GET /api/v1/gl/events` (filters: `legalEntityId`, `ledgerId`, `accountingPeriodId`,
+  `status`, `from`, `to` — at least one required, else 400 `EVENT_FILTER_REQUIRED`,
+  same guard pattern as GL-29's `AUDIT_FILTER_REQUIRED`), `GET /api/v1/gl/events/{id}`
+  (404 `EVENT_NOT_FOUND`), and `GET /api/v1/gl/events/legal-entity/{legalEntityId}`
+  (paginated) — there is no journal- or batch-scoped endpoint because those FKs don't
+  exist on the entity. Package `com.evyoog.gl.event` (mirrors GL-29's separate
+  `com.evyoog.gl.audit` package rather than nesting under `com.evyoog.gl.aie`).
+- No REST endpoint sets `PostingRequest.eventPayload` today — `CreateJournalRequest`
+  (GL-11) has no `eventPayload` field, so EVENT_ONLY journals can currently only be
+  posted by calling `PostingEngine.post()` directly (as `PostingEngineIT` and GL-20's
+  own `SlaEventControllerIT` both do). This is a pre-existing gap, not introduced by
+  GL-20 — out of scope to fix here.
+- V25 added `idx_sla_event_status`, `idx_sla_event_period`, `idx_sla_event_created_at`
+  alongside the V9 baseline's `idx_sla_event_ledger`/`idx_sla_event_le`.
+
 ### Codespaces deployment
 - Port 8080 must be set to Public visibility for React frontend to reach it
 - CORS allows: http://localhost:5173 and the Codespaces frontend public URL
