@@ -740,6 +740,39 @@ private Map<String, String> accountCombination;
 - V25 added `idx_sla_event_status`, `idx_sla_event_period`, `idx_sla_event_created_at`
   alongside the V9 baseline's `idx_sla_event_ledger`/`idx_sla_event_le`.
 
+### GL-19 — je_source_reference did NOT exist anywhere (CRITICAL — bigger gap than GL-14/GL-20)
+- The build spec claimed `aie.je_source_reference` "already exists from V1 baseline" and
+  told Claude Code only to add indexes if needed. This was verified false two ways:
+  grepping every migration file (`V1` through `V25`) for `je_source_reference`/`source_ref`
+  found nothing, and a live query against `evyoog-postgres`
+  (`SELECT table_name FROM information_schema.tables WHERE table_schema='aie'`) confirmed
+  the schema only had `interface_batch`, `interface_line`, `interface_error`,
+  `deduplication_log`, `batch_ack_log`, `sla_event_log` — no `je_source_reference`. There
+  is also no "V1 baseline" migration file at all; migrations are one-per-capability from
+  `V1__gl01_enterprise_setup.sql` onward. GL-19 created the table from scratch in
+  `V26__gl19_je_source_reference.sql`, matching the column list the spec assumed (that
+  part was accurate) plus `idx_je_source_ref_journal_header` and
+  `idx_je_source_ref_source_lookup` (composite on `source_system, source_document_id`,
+  the lookup key `GET /source-references/source/{system}/{docId}` filters on).
+- `je_source_reference` has no `is_active` column — the DELETE endpoint (only allowed
+  while the linked journal is DRAFT, per spec) does a real hard `repository.delete(...)`,
+  not a soft delete. This is consistent with Rule 3's actual scope ("never DELETE from
+  `gl.*`") — `je_source_reference` lives in `aie.*`, and unlike GL-*'s core financial
+  records this is a disposable linking row with no historical/audit value once removed
+  (the audit_log entry itself is the permanent record of the deletion).
+- **Audit logging pitfall — pass the response DTO, not the entity.** The first cut of
+  `SourceReferenceService.create()`/`delete()` called
+  `auditService.log(..., saved, ...)` with the raw `JeSourceReference` entity (which has
+  `@ManyToOne JournalHeader journalHeader`). Every IT test hit 500 `INTERNAL_ERROR` — the
+  Jackson serialization of the entity graph (traversing the lazy `journalHeader` proxy and
+  its own associations) blew up inside `AuditService.log()`'s `objectMapper.writeValueAsString()`,
+  caught only by `GlobalExceptionHandler`'s catch-all `@ExceptionHandler(Exception.class)`.
+  Every other capability's service (`FinanceDimensionService`, `UserService`,
+  `ApprovalPolicyService`, `RoleService`, etc.) passes the mapped response DTO to
+  `auditService.log(...)`, never the raw entity — this is the actual, load-bearing
+  convention, not just a style preference. Follow it whenever the entity being audited
+  has a JPA relation field.
+
 ### Codespaces deployment
 - Port 8080 must be set to Public visibility for React frontend to reach it
 - CORS allows: http://localhost:5173 and the Codespaces frontend public URL
