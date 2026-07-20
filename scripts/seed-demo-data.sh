@@ -9,6 +9,7 @@
 #   5. 25 Chart of Accounts entries (Assets/Liabilities/Equity/Revenue/Expense)
 #   6. 11 posted journal entries covering opening balances, sales, purchases,
 #      payroll, depreciation, and the April closing entry
+#   7. Closes the APR-2025 period
 #
 # Usage:
 #   ./scripts/seed-demo-data.sh <legalEntityId>
@@ -76,7 +77,7 @@ if [[ -z "$ACCESS_TOKEN" ]]; then
 fi
 echo "  Logged in."
 
-echo "==> [1/8] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
+echo "==> [1/9] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
 EXISTING_LEDGER_ID=$(api GET "/api/v1/gl/legal-entity-ledgers?legalEntityId=${LEGAL_ENTITY_ID}" \
     | jq -r '.data[] | select(.ledgerCode == "PRIM-01") | .ledgerId' | head -n1)
 
@@ -97,7 +98,7 @@ else
     LEDGER_ID=$(jq -r '.data.id' <<<"$LEDGER_RESPONSE")
     echo "  Ledger created: ${LEDGER_ID}"
 
-    echo "==> [1/8] Linking ledger to Legal Entity"
+    echo "==> [1/9] Linking ledger to Legal Entity"
     api POST /api/v1/gl/legal-entity-ledgers "$(jq -n \
         --arg legalEntityId "$LEGAL_ENTITY_ID" \
         --arg ledgerId "$LEDGER_ID" \
@@ -105,7 +106,7 @@ else
     echo "  Linked."
 fi
 
-echo "==> [2/8] Checking for existing NATURAL_ACCOUNT Finance Dimension"
+echo "==> [2/9] Checking for existing NATURAL_ACCOUNT Finance Dimension"
 EXISTING_DIMENSION=$(api GET "/api/v1/gl/finance-dimensions?ledgerId=${LEDGER_ID}&dimensionType=NATURAL_ACCOUNT" \
     | jq -r '.data | length')
 
@@ -126,7 +127,7 @@ else
     echo "  Finance dimension created."
 fi
 
-echo "==> [3/8] Checking for existing accounting calendar"
+echo "==> [3/9] Checking for existing accounting calendar"
 EXISTING_CALENDAR_ID=$(api GET "/api/v1/gl/accounting-calendars?ledgerId=${LEDGER_ID}" | jq -r '.data.id // empty')
 
 if [[ -n "$EXISTING_CALENDAR_ID" ]]; then
@@ -149,34 +150,43 @@ else
     echo "  Calendar created: ${CALENDAR_ID} (${GENERATED_COUNT} periods generated for FY 2025-26)"
 fi
 
-echo "==> [4/8] Checking for existing APR-2025 period status"
+echo "==> [4/9] Checking for existing APR-2025 period status"
 APR_2025_ID=$(api GET "/api/v1/gl/accounting-periods/find?calendarId=${CALENDAR_ID}&date=2025-04-15" | jq -r '.data.id')
 echo "  APR-2025 period id: ${APR_2025_ID}"
 
-EXISTING_PERIOD_STATUS_ID=$(api GET "/api/v1/gl/period-status?legalEntityId=${LEGAL_ENTITY_ID}" \
-    | jq -r '.data[] | select(.periodName == "APR-2025") | .id' | head -n1)
+EXISTING_PERIOD_STATUS_ROW=$(api GET "/api/v1/gl/period-status?legalEntityId=${LEGAL_ENTITY_ID}" \
+    | jq -r '.data[] | select(.periodName == "APR-2025") | [.id, .status] | @tsv' | head -n1)
 
-if [[ -n "$EXISTING_PERIOD_STATUS_ID" ]]; then
-    PERIOD_STATUS_ID="$EXISTING_PERIOD_STATUS_ID"
-    echo "  APR-2025 period status already exists: ${PERIOD_STATUS_ID} — skipping create/open."
+if [[ -n "$EXISTING_PERIOD_STATUS_ROW" ]]; then
+    PERIOD_STATUS_ID=$(cut -f1 <<<"$EXISTING_PERIOD_STATUS_ROW")
+    PERIOD_STATUS_STATE=$(cut -f2 <<<"$EXISTING_PERIOD_STATUS_ROW")
+    echo "  APR-2025 period status already exists: ${PERIOD_STATUS_ID} (${PERIOD_STATUS_STATE})"
 else
     PERIOD_STATUS_RESPONSE=$(api POST /api/v1/gl/period-status "$(jq -n \
         --arg legalEntityId "$LEGAL_ENTITY_ID" \
         --arg accountingPeriodId "$APR_2025_ID" \
         '{legalEntityId: $legalEntityId, accountingPeriodId: $accountingPeriodId}')")
     PERIOD_STATUS_ID=$(jq -r '.data.id' <<<"$PERIOD_STATUS_RESPONSE")
-
-    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/open" >/dev/null
-    echo "  APR-2025 period opened."
+    PERIOD_STATUS_STATE=$(jq -r '.data.status' <<<"$PERIOD_STATUS_RESPONSE")
 fi
 
-echo "==> [5/8] Fetching MANUAL journal source and ACCRUAL journal category ids"
+if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
+    echo "  APR-2025 already CLOSED — skipping open step."
+elif [[ "$PERIOD_STATUS_STATE" == "OPEN" ]]; then
+    echo "  APR-2025 already OPEN — skipping open step."
+else
+    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/open" >/dev/null
+    echo "  APR-2025 period opened."
+    PERIOD_STATUS_STATE="OPEN"
+fi
+
+echo "==> [5/9] Fetching MANUAL journal source and ACCRUAL journal category ids"
 MANUAL_SOURCE_ID=$(api GET /api/v1/gl/journal-sources | jq -r '.data[] | select(.code=="MANUAL") | .id')
 ACCRUAL_CATEGORY_ID=$(api GET /api/v1/gl/journal-categories | jq -r '.data[] | select(.code=="ACCRUAL") | .id')
 echo "  journalSourceId (MANUAL):   ${MANUAL_SOURCE_ID}"
 echo "  journalCategoryId (ACCRUAL): ${ACCRUAL_CATEGORY_ID}"
 
-echo "==> [6/8] Creating Chart of Accounts (25 accounts)"
+echo "==> [6/9] Creating Chart of Accounts (25 accounts)"
 
 # code|name|qualifier
 ACCOUNTS=(
@@ -239,7 +249,7 @@ for entry in "${ACCOUNTS[@]}"; do
     echo "  ${code} ${name} (${qualifier}) -> ${acct_id}"
 done
 
-echo "==> [7/8] Posting journal entries"
+echo "==> [7/9] Posting journal entries"
 
 JOURNALS_RESPONSE=$(api GET "/api/v1/gl/journals?legalEntityId=${LEGAL_ENTITY_ID}&status=POSTED&size=50")
 EXISTING_POSTED=$(jq '.data.content | length' <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "0")
@@ -355,12 +365,24 @@ else
     echo "  Posted: Net Income Transfer to Retained Earnings -> ${je11_journal_number} (${je11_journal_status})"
 fi
 
+echo "==> [8/9] Closing APR-2025 period"
+if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
+    echo "  APR-2025 already CLOSED — skipping close step."
+else
+    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/close" "$(jq -n \
+        --arg closedBy "$ADMIN_EMAIL" \
+        '{closedBy: $closedBy}')" >/dev/null
+    PERIOD_STATUS_STATE="CLOSED"
+    echo "  APR-2025 period closed."
+fi
+
 echo ""
-echo "==> [8/8] Done. Summary:"
+echo "==> [9/9] Done. Summary:"
 echo "  legalEntityId: ${LEGAL_ENTITY_ID}"
 echo "  ledgerId:      ${LEDGER_ID}"
 echo "  calendarId:    ${CALENDAR_ID}"
-echo "  APR-2025 id:   ${APR_2025_ID} (OPEN)"
+echo "  APR-2025 id:   ${APR_2025_ID}"
+echo "  APR-2025 status: CLOSED"
 echo ""
 echo "  Chart of Accounts (${#ACCOUNTS[@]}):"
 for entry in "${ACCOUNTS[@]}"; do
