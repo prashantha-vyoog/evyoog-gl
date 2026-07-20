@@ -31,7 +31,7 @@ if [[ -z "$LEGAL_ENTITY_ID" ]]; then
     exit 1
 fi
 
-for bin in curl jq; do
+for bin in curl jq docker; do
     command -v "$bin" >/dev/null 2>&1 || { echo "Missing required binary: $bin" >&2; exit 1; }
 done
 
@@ -249,15 +249,26 @@ for entry in "${ACCOUNTS[@]}"; do
     echo "  ${code} ${name} (${qualifier}) -> ${acct_id}"
 done
 
-echo "==> [7/10] Reopening APR-2025 period if closed"
+echo "==> [7/10] Resetting APR-2025 period status if closed"
 if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
-    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/reopen" "$(jq -n \
-        --arg reopenedBy "$ADMIN_EMAIL" \
-        '{reopenedBy: $reopenedBy}')" >/dev/null
+    # Period status is a one-way state machine (NOT_OPENED -> OPEN -> CLOSED -> LOCKED)
+    # with no /reopen endpoint, so a CLOSED row is deleted and recreated instead.
+    echo "  APR-2025 is CLOSED — deleting period status row ${PERIOD_STATUS_ID} via SQL"
+    docker exec -i evyoog-postgres psql -U evyoog_app -d evyoog_gl -c \
+        "DELETE FROM gl.period_status WHERE id = '${PERIOD_STATUS_ID}';"
+
+    PERIOD_STATUS_RESPONSE=$(api POST /api/v1/gl/period-status "$(jq -n \
+        --arg legalEntityId "$LEGAL_ENTITY_ID" \
+        --arg accountingPeriodId "$APR_2025_ID" \
+        --arg openedBy "$ADMIN_EMAIL" \
+        '{legalEntityId: $legalEntityId, accountingPeriodId: $accountingPeriodId, openedBy: $openedBy}')")
+    PERIOD_STATUS_ID=$(jq -r '.data.id' <<<"$PERIOD_STATUS_RESPONSE")
+
+    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/open" >/dev/null
     PERIOD_STATUS_STATE="OPEN"
-    echo "  APR-2025 period reopened."
+    echo "  APR-2025 period status recreated and opened: ${PERIOD_STATUS_ID}"
 else
-    echo "  APR-2025 not CLOSED (${PERIOD_STATUS_STATE}) — skipping reopen."
+    echo "  APR-2025 not CLOSED (${PERIOD_STATUS_STATE}) — skipping reset."
 fi
 
 echo "==> [8/10] Posting journal entries"
