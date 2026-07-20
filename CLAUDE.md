@@ -817,3 +817,40 @@ private Map<String, String> accountCombination;
 4. POST /api/v1/gl/setup-wizard/run -> get legalEntityId
 5. INSERT INTO auth.user_roles for admin@evyoog.com + SYS_ADMIN
 6. ./scripts/seed-demo-data.sh <legalEntityId>
+
+### GL-17 — AieImportRequest/AieLineRequest are Java records
+- These are Java records (NOT mutable beans) — no setters, no @Builder
+- Use canonical constructors only
+- accountCombination on AieLineRequest is for non-natural-account dimensions only
+  Do NOT set { "NATURAL_ACCOUNT": code } — natural account resolved via accountCode field
+- Follow ApiResponse<T> envelope on all controllers (not raw DTO return)
+
+### GL-19 — je_source_reference did NOT exist in V1 baseline
+- Table was created fresh in V26 migration
+- Prompt assumed it existed — it did not
+
+### GL-20 — aie.sla_event_log actual schema (V9 baseline)
+- Columns: id, ledger_id, legal_entity_id, accounting_period_id,
+  event_payload (JSONB), status, created_at
+- NO batch_id, NO journal_header_id, NO event_type column
+- Filter by legalEntityId, ledgerId, accountingPeriodId, status only
+
+### GL-06 — coa_import_job already existed in V5 baseline
+- Columns differ from prompt assumptions:
+  finance_dimension_id (not legal_entity_id)
+  error_details (not errors)
+  created_by is UUID (not VARCHAR)
+  status values: PENDING/PROCESSING/COMPLETED/COMPLETED_WITH_ERRORS/FAILED
+  (no PARTIAL status)
+- Endpoint is POST /api/v1/gl/coa-import-jobs (not /coa/import)
+- CoaImportJob entity, repository, mapper, controller already scaffolded in GL-05
+
+### GL-06 — REQUIRES_NEW transaction isolation (CRITICAL)
+- ChartOfAccountsService.createAccount() → DimensionValueService.create()
+  is itself @Transactional
+- Calling it from inside a @Transactional job method means a single bad row
+  marks the whole transaction rollback-only (UnexpectedRollbackException)
+- Fix: wrap each row's createAccount() call in a REQUIRES_NEW-scoped service
+  method (CoaImportRowService.createAccountIsolated())
+- Pattern to follow for ANY import service that calls @Transactional services
+  in a loop with per-row error handling
