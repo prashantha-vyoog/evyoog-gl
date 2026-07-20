@@ -7,8 +7,8 @@
 #   3. Accounting Calendar (auto-generates FY 2025-26 periods on creation)
 #   4. Opens the APR-2025 period for the Legal Entity
 #   5. 25 Chart of Accounts entries (Assets/Liabilities/Equity/Revenue/Expense)
-#   6. 10 posted journal entries covering opening balances, sales, purchases,
-#      payroll and depreciation for April 2025
+#   6. 11 posted journal entries covering opening balances, sales, purchases,
+#      payroll, depreciation, and the April closing entry
 #
 # Usage:
 #   ./scripts/seed-demo-data.sh <legalEntityId>
@@ -266,7 +266,9 @@ JOURNALS=(
 
 JOURNAL_NUMBERS=()
 
-if [[ "$EXISTING_POSTED" -ge "${#JOURNALS[@]}" ]]; then
+TOTAL_JOURNAL_COUNT=$((${#JOURNALS[@]} + 1))
+
+if [[ "$EXISTING_POSTED" -ge "$TOTAL_JOURNAL_COUNT" ]]; then
     echo "  ${EXISTING_POSTED} journals already posted for APR-2025 — skipping journal creation."
 else
     for entry in "${JOURNALS[@]}"; do
@@ -305,6 +307,52 @@ else
         JOURNAL_NUMBERS+=("$journal_number")
         echo "  Posted: ${description} -> ${journal_number} (${journal_status})"
     done
+
+    echo "==> Posting JE-11: Net Income Transfer to Retained Earnings"
+
+    JE11_LINES_JSON=$(jq -n \
+        --arg id4100 "${ACCOUNT_ID[4100]}" \
+        --arg id4200 "${ACCOUNT_ID[4200]}" \
+        --arg id4300 "${ACCOUNT_ID[4300]}" \
+        --arg id5100 "${ACCOUNT_ID[5100]}" \
+        --arg id5200 "${ACCOUNT_ID[5200]}" \
+        --arg id5300 "${ACCOUNT_ID[5300]}" \
+        --arg id5400 "${ACCOUNT_ID[5400]}" \
+        --arg id5500 "${ACCOUNT_ID[5500]}" \
+        --arg id3200 "${ACCOUNT_ID[3200]}" \
+        '[
+            {naturalAccountValueId: $id4100, accountCombination: {NATURAL_ACCOUNT: "4100"}, debitAmount: 75000000},
+            {naturalAccountValueId: $id4200, accountCombination: {NATURAL_ACCOUNT: "4200"}, debitAmount: 20000000},
+            {naturalAccountValueId: $id4300, accountCombination: {NATURAL_ACCOUNT: "4300"}, debitAmount: 5000000},
+            {naturalAccountValueId: $id5100, accountCombination: {NATURAL_ACCOUNT: "5100"}, creditAmount: 22000000},
+            {naturalAccountValueId: $id5200, accountCombination: {NATURAL_ACCOUNT: "5200"}, creditAmount: 10000000},
+            {naturalAccountValueId: $id5300, accountCombination: {NATURAL_ACCOUNT: "5300"}, creditAmount: 8000000},
+            {naturalAccountValueId: $id5400, accountCombination: {NATURAL_ACCOUNT: "5400"}, creditAmount: 3000000},
+            {naturalAccountValueId: $id5500, accountCombination: {NATURAL_ACCOUNT: "5500"}, creditAmount: 2000000},
+            {naturalAccountValueId: $id3200, accountCombination: {NATURAL_ACCOUNT: "3200"}, creditAmount: 55000000}
+        ]')
+
+    JE11_BODY=$(jq -n \
+        --arg legalEntityId "$LEGAL_ENTITY_ID" \
+        --arg journalSourceId "$MANUAL_SOURCE_ID" \
+        --arg journalCategoryId "$ACCRUAL_CATEGORY_ID" \
+        --arg glDate "2025-04-30" \
+        --arg description "Net Income Transfer — APR-2025 Closing Entry" \
+        --argjson lines "$JE11_LINES_JSON" \
+        '{
+            legalEntityId: $legalEntityId,
+            journalSourceId: $journalSourceId,
+            journalCategoryId: $journalCategoryId,
+            glDate: $glDate,
+            description: $description,
+            lines: $lines
+        }')
+
+    JE11_RESPONSE=$(api POST /api/v1/gl/journals "$JE11_BODY")
+    je11_journal_number=$(jq -r '.data.journalNumber' <<<"$JE11_RESPONSE")
+    je11_journal_status=$(jq -r '.data.status' <<<"$JE11_RESPONSE")
+    JOURNAL_NUMBERS+=("$je11_journal_number")
+    echo "  Posted: Net Income Transfer to Retained Earnings -> ${je11_journal_number} (${je11_journal_status})"
 fi
 
 echo ""
