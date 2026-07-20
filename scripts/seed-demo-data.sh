@@ -77,7 +77,7 @@ if [[ -z "$ACCESS_TOKEN" ]]; then
 fi
 echo "  Logged in."
 
-echo "==> [1/9] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
+echo "==> [1/10] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
 EXISTING_LEDGER_ID=$(api GET "/api/v1/gl/legal-entity-ledgers?legalEntityId=${LEGAL_ENTITY_ID}" \
     | jq -r '.data[] | select(.ledgerCode == "PRIM-01") | .ledgerId' | head -n1)
 
@@ -98,7 +98,7 @@ else
     LEDGER_ID=$(jq -r '.data.id' <<<"$LEDGER_RESPONSE")
     echo "  Ledger created: ${LEDGER_ID}"
 
-    echo "==> [1/9] Linking ledger to Legal Entity"
+    echo "==> [1/10] Linking ledger to Legal Entity"
     api POST /api/v1/gl/legal-entity-ledgers "$(jq -n \
         --arg legalEntityId "$LEGAL_ENTITY_ID" \
         --arg ledgerId "$LEDGER_ID" \
@@ -106,7 +106,7 @@ else
     echo "  Linked."
 fi
 
-echo "==> [2/9] Checking for existing NATURAL_ACCOUNT Finance Dimension"
+echo "==> [2/10] Checking for existing NATURAL_ACCOUNT Finance Dimension"
 EXISTING_DIMENSION=$(api GET "/api/v1/gl/finance-dimensions?ledgerId=${LEDGER_ID}&dimensionType=NATURAL_ACCOUNT" \
     | jq -r '.data | length')
 
@@ -127,7 +127,7 @@ else
     echo "  Finance dimension created."
 fi
 
-echo "==> [3/9] Checking for existing accounting calendar"
+echo "==> [3/10] Checking for existing accounting calendar"
 EXISTING_CALENDAR_ID=$(api GET "/api/v1/gl/accounting-calendars?ledgerId=${LEDGER_ID}" | jq -r '.data.id // empty')
 
 if [[ -n "$EXISTING_CALENDAR_ID" ]]; then
@@ -150,7 +150,7 @@ else
     echo "  Calendar created: ${CALENDAR_ID} (${GENERATED_COUNT} periods generated for FY 2025-26)"
 fi
 
-echo "==> [4/9] Checking for existing APR-2025 period status"
+echo "==> [4/10] Checking for existing APR-2025 period status"
 APR_2025_ID=$(api GET "/api/v1/gl/accounting-periods/find?calendarId=${CALENDAR_ID}&date=2025-04-15" | jq -r '.data.id')
 echo "  APR-2025 period id: ${APR_2025_ID}"
 
@@ -180,13 +180,13 @@ else
     PERIOD_STATUS_STATE="OPEN"
 fi
 
-echo "==> [5/9] Fetching MANUAL journal source and ACCRUAL journal category ids"
+echo "==> [5/10] Fetching MANUAL journal source and ACCRUAL journal category ids"
 MANUAL_SOURCE_ID=$(api GET /api/v1/gl/journal-sources | jq -r '.data[] | select(.code=="MANUAL") | .id')
 ACCRUAL_CATEGORY_ID=$(api GET /api/v1/gl/journal-categories | jq -r '.data[] | select(.code=="ACCRUAL") | .id')
 echo "  journalSourceId (MANUAL):   ${MANUAL_SOURCE_ID}"
 echo "  journalCategoryId (ACCRUAL): ${ACCRUAL_CATEGORY_ID}"
 
-echo "==> [6/9] Creating Chart of Accounts (25 accounts)"
+echo "==> [6/10] Creating Chart of Accounts (25 accounts)"
 
 # code|name|qualifier
 ACCOUNTS=(
@@ -249,15 +249,24 @@ for entry in "${ACCOUNTS[@]}"; do
     echo "  ${code} ${name} (${qualifier}) -> ${acct_id}"
 done
 
-echo "==> [7/9] Posting journal entries"
+echo "==> [7/10] Reopening APR-2025 period if closed"
+if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
+    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/reopen" "$(jq -n \
+        --arg reopenedBy "$ADMIN_EMAIL" \
+        '{reopenedBy: $reopenedBy}')" >/dev/null
+    PERIOD_STATUS_STATE="OPEN"
+    echo "  APR-2025 period reopened."
+else
+    echo "  APR-2025 not CLOSED (${PERIOD_STATUS_STATE}) — skipping reopen."
+fi
+
+echo "==> [8/10] Posting journal entries"
 
 JOURNALS_RESPONSE=$(api GET "/api/v1/gl/journals?legalEntityId=${LEGAL_ENTITY_ID}&status=POSTED&size=50")
-EXISTING_POSTED=$(jq '.data.content | length' <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "0")
-if [[ "$EXISTING_POSTED" == "null" || -z "$EXISTING_POSTED" ]]; then
-    EXISTING_POSTED=$(jq '.data | length' <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "0")
-fi
-if [[ "$EXISTING_POSTED" == "null" || -z "$EXISTING_POSTED" ]]; then
-    EXISTING_POSTED=0
+CLOSING_ENTRY_EXISTS=$(jq -r '(.data.content // .data // []) | any(.description // "" | contains("Net Income Transfer"))' \
+    <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "false")
+if [[ "$CLOSING_ENTRY_EXISTS" != "true" ]]; then
+    CLOSING_ENTRY_EXISTS="false"
 fi
 
 # description|glDate|drCode|drAmount|crCode|crAmount
@@ -276,10 +285,8 @@ JOURNALS=(
 
 JOURNAL_NUMBERS=()
 
-TOTAL_JOURNAL_COUNT=$((${#JOURNALS[@]} + 1))
-
-if [[ "$EXISTING_POSTED" -ge "$TOTAL_JOURNAL_COUNT" ]]; then
-    echo "  ${EXISTING_POSTED} journals already posted for APR-2025 — skipping journal creation."
+if [[ "$CLOSING_ENTRY_EXISTS" == "true" ]]; then
+    echo "  Closing entry (JE-11 Net Income Transfer) already posted for APR-2025 — skipping journal creation."
 else
     for entry in "${JOURNALS[@]}"; do
         IFS='|' read -r description glDate drCode drAmount crCode crAmount <<<"$entry"
@@ -365,7 +372,7 @@ else
     echo "  Posted: Net Income Transfer to Retained Earnings -> ${je11_journal_number} (${je11_journal_status})"
 fi
 
-echo "==> [8/9] Closing APR-2025 period"
+echo "==> [9/10] Closing APR-2025 period"
 if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
     echo "  APR-2025 already CLOSED — skipping close step."
 else
@@ -377,7 +384,7 @@ else
 fi
 
 echo ""
-echo "==> [9/9] Done. Summary:"
+echo "==> [10/10] Done. Summary:"
 echo "  legalEntityId: ${LEGAL_ENTITY_ID}"
 echo "  ledgerId:      ${LEDGER_ID}"
 echo "  calendarId:    ${CALENDAR_ID}"
