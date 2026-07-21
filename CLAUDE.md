@@ -854,3 +854,14 @@ private Map<String, String> accountCombination;
   method (CoaImportRowService.createAccountIsolated())
 - Pattern to follow for ANY import service that calls @Transactional services
   in a loop with per-row error handling
+
+### Demo data — updated Legal Entity ID (July 21, 2026)
+- Legal Entity ID: 50612f23-6dfa-423f-8546-25b5bc45a57f
+- Previous IDs are stale — use this one for all curl commands
+
+### seed-demo-data.sh — JE-11 removed (year-end close deferred)
+- JE-11 closing entry removed from seed script
+- Revenue/Expense accounts retain balances so P&L shows real data
+- Year-end close (transfer net income to Retained Earnings) is a 
+  deferred capability — not yet built
+- Script now posts 10 journals only, period ends CLOSED
