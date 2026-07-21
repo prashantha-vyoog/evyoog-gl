@@ -349,15 +349,15 @@ else
         --arg id5500 "${ACCOUNT_ID[5500]}" \
         --arg id3200 "${ACCOUNT_ID[3200]}" \
         '[
-            {naturalAccountValueId: $id4100, accountCombination: {NATURAL_ACCOUNT: "4100"}, debitAmount: 75000000},
-            {naturalAccountValueId: $id4200, accountCombination: {NATURAL_ACCOUNT: "4200"}, debitAmount: 20000000},
-            {naturalAccountValueId: $id4300, accountCombination: {NATURAL_ACCOUNT: "4300"}, debitAmount: 5000000},
-            {naturalAccountValueId: $id5100, accountCombination: {NATURAL_ACCOUNT: "5100"}, creditAmount: 22000000},
-            {naturalAccountValueId: $id5200, accountCombination: {NATURAL_ACCOUNT: "5200"}, creditAmount: 10000000},
-            {naturalAccountValueId: $id5300, accountCombination: {NATURAL_ACCOUNT: "5300"}, creditAmount: 8000000},
-            {naturalAccountValueId: $id5400, accountCombination: {NATURAL_ACCOUNT: "5400"}, creditAmount: 3000000},
-            {naturalAccountValueId: $id5500, accountCombination: {NATURAL_ACCOUNT: "5500"}, creditAmount: 2000000},
-            {naturalAccountValueId: $id3200, accountCombination: {NATURAL_ACCOUNT: "3200"}, creditAmount: 55000000}
+            {naturalAccountValueId: $id4100, accountCombination: {NATURAL_ACCOUNT: "4100"}, debitAmount: 7500000},
+            {naturalAccountValueId: $id4200, accountCombination: {NATURAL_ACCOUNT: "4200"}, debitAmount: 2000000},
+            {naturalAccountValueId: $id4300, accountCombination: {NATURAL_ACCOUNT: "4300"}, debitAmount: 500000},
+            {naturalAccountValueId: $id5100, accountCombination: {NATURAL_ACCOUNT: "5100"}, creditAmount: 2200000},
+            {naturalAccountValueId: $id5200, accountCombination: {NATURAL_ACCOUNT: "5200"}, creditAmount: 1000000},
+            {naturalAccountValueId: $id5300, accountCombination: {NATURAL_ACCOUNT: "5300"}, creditAmount: 800000},
+            {naturalAccountValueId: $id5400, accountCombination: {NATURAL_ACCOUNT: "5400"}, creditAmount: 300000},
+            {naturalAccountValueId: $id5500, accountCombination: {NATURAL_ACCOUNT: "5500"}, creditAmount: 200000},
+            {naturalAccountValueId: $id3200, accountCombination: {NATURAL_ACCOUNT: "3200"}, creditAmount: 5500000}
         ]')
 
     JE11_BODY=$(jq -n \
