@@ -7,8 +7,8 @@
 #   3. Accounting Calendar (auto-generates FY 2025-26 periods on creation)
 #   4. Opens the APR-2025 period for the Legal Entity
 #   5. 25 Chart of Accounts entries (Assets/Liabilities/Equity/Revenue/Expense)
-#   6. 11 posted journal entries covering opening balances, sales, purchases,
-#      payroll, depreciation, and the April closing entry
+#   6. 10 posted journal entries covering opening balances, sales, purchases,
+#      payroll, and depreciation
 #   7. Closes the APR-2025 period
 #
 # Usage:
@@ -31,7 +31,7 @@ if [[ -z "$LEGAL_ENTITY_ID" ]]; then
     exit 1
 fi
 
-for bin in curl jq docker; do
+for bin in curl jq; do
     command -v "$bin" >/dev/null 2>&1 || { echo "Missing required binary: $bin" >&2; exit 1; }
 done
 
@@ -77,7 +77,7 @@ if [[ -z "$ACCESS_TOKEN" ]]; then
 fi
 echo "  Logged in."
 
-echo "==> [1/10] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
+echo "==> [1/9] Checking for existing ledger on Legal Entity ${LEGAL_ENTITY_ID}"
 EXISTING_LEDGER_ID=$(api GET "/api/v1/gl/legal-entity-ledgers?legalEntityId=${LEGAL_ENTITY_ID}" \
     | jq -r '.data[] | select(.ledgerCode == "PRIM-01") | .ledgerId' | head -n1)
 
@@ -98,7 +98,7 @@ else
     LEDGER_ID=$(jq -r '.data.id' <<<"$LEDGER_RESPONSE")
     echo "  Ledger created: ${LEDGER_ID}"
 
-    echo "==> [1/10] Linking ledger to Legal Entity"
+    echo "==> [1/9] Linking ledger to Legal Entity"
     api POST /api/v1/gl/legal-entity-ledgers "$(jq -n \
         --arg legalEntityId "$LEGAL_ENTITY_ID" \
         --arg ledgerId "$LEDGER_ID" \
@@ -106,7 +106,7 @@ else
     echo "  Linked."
 fi
 
-echo "==> [2/10] Checking for existing NATURAL_ACCOUNT Finance Dimension"
+echo "==> [2/9] Checking for existing NATURAL_ACCOUNT Finance Dimension"
 EXISTING_DIMENSION=$(api GET "/api/v1/gl/finance-dimensions?ledgerId=${LEDGER_ID}&dimensionType=NATURAL_ACCOUNT" \
     | jq -r '.data | length')
 
@@ -127,7 +127,7 @@ else
     echo "  Finance dimension created."
 fi
 
-echo "==> [3/10] Checking for existing accounting calendar"
+echo "==> [3/9] Checking for existing accounting calendar"
 EXISTING_CALENDAR_ID=$(api GET "/api/v1/gl/accounting-calendars?ledgerId=${LEDGER_ID}" | jq -r '.data.id // empty')
 
 if [[ -n "$EXISTING_CALENDAR_ID" ]]; then
@@ -150,7 +150,7 @@ else
     echo "  Calendar created: ${CALENDAR_ID} (${GENERATED_COUNT} periods generated for FY 2025-26)"
 fi
 
-echo "==> [4/10] Checking for existing APR-2025 period status"
+echo "==> [4/9] Checking for existing APR-2025 period status"
 APR_2025_ID=$(api GET "/api/v1/gl/accounting-periods/find?calendarId=${CALENDAR_ID}&date=2025-04-15" | jq -r '.data.id')
 echo "  APR-2025 period id: ${APR_2025_ID}"
 
@@ -180,13 +180,13 @@ else
     PERIOD_STATUS_STATE="OPEN"
 fi
 
-echo "==> [5/10] Fetching MANUAL journal source and ACCRUAL journal category ids"
+echo "==> [5/9] Fetching MANUAL journal source and ACCRUAL journal category ids"
 MANUAL_SOURCE_ID=$(api GET /api/v1/gl/journal-sources | jq -r '.data[] | select(.code=="MANUAL") | .id')
 ACCRUAL_CATEGORY_ID=$(api GET /api/v1/gl/journal-categories | jq -r '.data[] | select(.code=="ACCRUAL") | .id')
 echo "  journalSourceId (MANUAL):   ${MANUAL_SOURCE_ID}"
 echo "  journalCategoryId (ACCRUAL): ${ACCRUAL_CATEGORY_ID}"
 
-echo "==> [6/10] Creating Chart of Accounts (25 accounts)"
+echo "==> [6/9] Creating Chart of Accounts (25 accounts)"
 
 # code|name|qualifier
 ACCOUNTS=(
@@ -249,36 +249,10 @@ for entry in "${ACCOUNTS[@]}"; do
     echo "  ${code} ${name} (${qualifier}) -> ${acct_id}"
 done
 
-echo "==> [7/10] Resetting APR-2025 period status if closed"
-if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
-    # Period status is a one-way state machine (NOT_OPENED -> OPEN -> CLOSED -> LOCKED)
-    # with no /reopen endpoint, so a CLOSED row is deleted and recreated instead.
-    echo "  APR-2025 is CLOSED — deleting period status row ${PERIOD_STATUS_ID} via SQL"
-    docker exec -i evyoog-postgres psql -U evyoog_app -d evyoog_gl -c \
-        "DELETE FROM gl.period_status WHERE id = '${PERIOD_STATUS_ID}';"
-
-    PERIOD_STATUS_RESPONSE=$(api POST /api/v1/gl/period-status "$(jq -n \
-        --arg legalEntityId "$LEGAL_ENTITY_ID" \
-        --arg accountingPeriodId "$APR_2025_ID" \
-        --arg openedBy "$ADMIN_EMAIL" \
-        '{legalEntityId: $legalEntityId, accountingPeriodId: $accountingPeriodId, openedBy: $openedBy}')")
-    PERIOD_STATUS_ID=$(jq -r '.data.id' <<<"$PERIOD_STATUS_RESPONSE")
-
-    api POST "/api/v1/gl/period-status/${PERIOD_STATUS_ID}/open" >/dev/null
-    PERIOD_STATUS_STATE="OPEN"
-    echo "  APR-2025 period status recreated and opened: ${PERIOD_STATUS_ID}"
-else
-    echo "  APR-2025 not CLOSED (${PERIOD_STATUS_STATE}) — skipping reset."
-fi
-
-echo "==> [8/10] Posting journal entries"
+echo "==> [7/9] Posting journal entries"
 
 JOURNALS_RESPONSE=$(api GET "/api/v1/gl/journals?legalEntityId=${LEGAL_ENTITY_ID}&status=POSTED&size=50")
-CLOSING_ENTRY_EXISTS=$(jq -r '(.data.content // .data // []) | any(.description // "" | contains("Net Income Transfer"))' \
-    <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "false")
-if [[ "$CLOSING_ENTRY_EXISTS" != "true" ]]; then
-    CLOSING_ENTRY_EXISTS="false"
-fi
+POSTED_COUNT=$(jq -r '(.data.content // .data // []) | length' <<<"$JOURNALS_RESPONSE" 2>/dev/null || echo "0")
 
 # description|glDate|drCode|drAmount|crCode|crAmount
 JOURNALS=(
@@ -296,8 +270,8 @@ JOURNALS=(
 
 JOURNAL_NUMBERS=()
 
-if [[ "$CLOSING_ENTRY_EXISTS" == "true" ]]; then
-    echo "  Closing entry (JE-11 Net Income Transfer) already posted for APR-2025 — skipping journal creation."
+if [[ "$POSTED_COUNT" -ge 10 ]]; then
+    echo "  ${POSTED_COUNT} journals already posted for APR-2025 — skipping journal creation."
 else
     for entry in "${JOURNALS[@]}"; do
         IFS='|' read -r description glDate drCode drAmount crCode crAmount <<<"$entry"
@@ -336,54 +310,13 @@ else
         echo "  Posted: ${description} -> ${journal_number} (${journal_status})"
     done
 
-    echo "==> Posting JE-11: Net Income Transfer to Retained Earnings"
-
-    JE11_LINES_JSON=$(jq -n \
-        --arg id4100 "${ACCOUNT_ID[4100]}" \
-        --arg id4200 "${ACCOUNT_ID[4200]}" \
-        --arg id4300 "${ACCOUNT_ID[4300]}" \
-        --arg id5100 "${ACCOUNT_ID[5100]}" \
-        --arg id5200 "${ACCOUNT_ID[5200]}" \
-        --arg id5300 "${ACCOUNT_ID[5300]}" \
-        --arg id5400 "${ACCOUNT_ID[5400]}" \
-        --arg id5500 "${ACCOUNT_ID[5500]}" \
-        --arg id3200 "${ACCOUNT_ID[3200]}" \
-        '[
-            {naturalAccountValueId: $id4100, accountCombination: {NATURAL_ACCOUNT: "4100"}, debitAmount: 7500000},
-            {naturalAccountValueId: $id4200, accountCombination: {NATURAL_ACCOUNT: "4200"}, debitAmount: 2000000},
-            {naturalAccountValueId: $id4300, accountCombination: {NATURAL_ACCOUNT: "4300"}, debitAmount: 500000},
-            {naturalAccountValueId: $id5100, accountCombination: {NATURAL_ACCOUNT: "5100"}, creditAmount: 2200000},
-            {naturalAccountValueId: $id5200, accountCombination: {NATURAL_ACCOUNT: "5200"}, creditAmount: 1000000},
-            {naturalAccountValueId: $id5300, accountCombination: {NATURAL_ACCOUNT: "5300"}, creditAmount: 800000},
-            {naturalAccountValueId: $id5400, accountCombination: {NATURAL_ACCOUNT: "5400"}, creditAmount: 300000},
-            {naturalAccountValueId: $id5500, accountCombination: {NATURAL_ACCOUNT: "5500"}, creditAmount: 200000},
-            {naturalAccountValueId: $id3200, accountCombination: {NATURAL_ACCOUNT: "3200"}, creditAmount: 5500000}
-        ]')
-
-    JE11_BODY=$(jq -n \
-        --arg legalEntityId "$LEGAL_ENTITY_ID" \
-        --arg journalSourceId "$MANUAL_SOURCE_ID" \
-        --arg journalCategoryId "$ACCRUAL_CATEGORY_ID" \
-        --arg glDate "2025-04-30" \
-        --arg description "Net Income Transfer — APR-2025 Closing Entry" \
-        --argjson lines "$JE11_LINES_JSON" \
-        '{
-            legalEntityId: $legalEntityId,
-            journalSourceId: $journalSourceId,
-            journalCategoryId: $journalCategoryId,
-            glDate: $glDate,
-            description: $description,
-            lines: $lines
-        }')
-
-    JE11_RESPONSE=$(api POST /api/v1/gl/journals "$JE11_BODY")
-    je11_journal_number=$(jq -r '.data.journalNumber' <<<"$JE11_RESPONSE")
-    je11_journal_status=$(jq -r '.data.status' <<<"$JE11_RESPONSE")
-    JOURNAL_NUMBERS+=("$je11_journal_number")
-    echo "  Posted: Net Income Transfer to Retained Earnings -> ${je11_journal_number} (${je11_journal_status})"
+    # NOTE: Year-end closing entry (transfer net income to Retained Earnings)
+    # is intentionally excluded from demo seed data. Year-end close is a
+    # deferred capability. Revenue and Expense accounts retain their balances
+    # so P&L reports show meaningful data during the demo period.
 fi
 
-echo "==> [9/10] Closing APR-2025 period"
+echo "==> [8/9] Closing APR-2025 period"
 if [[ "$PERIOD_STATUS_STATE" == "CLOSED" ]]; then
     echo "  APR-2025 already CLOSED — skipping close step."
 else
@@ -395,7 +328,7 @@ else
 fi
 
 echo ""
-echo "==> [10/10] Done. Summary:"
+echo "==> [9/9] Done. Summary:"
 echo "  legalEntityId: ${LEGAL_ENTITY_ID}"
 echo "  ledgerId:      ${LEDGER_ID}"
 echo "  calendarId:    ${CALENDAR_ID}"
