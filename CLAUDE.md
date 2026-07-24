@@ -865,3 +865,13 @@ private Map<String, String> accountCombination;
 - Year-end close (transfer net income to Retained Earnings) is a 
   deferred capability — not yet built
 - Script now posts 10 journals only, period ends CLOSED
+
+### Demo data — latest Legal Entity ID (July 22, 2026)
+- Legal Entity ID: c6dec054-bbfd-458f-a5dd-f7c7bbb3bc42
+- Previous IDs are stale — use this one for all curl commands
+
+### Pending backend capability
+- POST /api/v1/auth/change-password — not yet built
+  Takes: currentPassword, newPassword
+  Updates auth.users.password_hash, sets must_change_pwd=false
+  Invalidates existing refresh tokens
